@@ -7,7 +7,12 @@ import { registerOrb } from "@/lib/registry";
 import { dragNode, endDrag, setHovered } from "@/lib/simulation";
 import { canvas } from "@/lib/canvas-controller";
 import { useGraph, orbSize } from "@/store/graph";
+import { useOrbDials } from "@/store/orb-dials";
 import { useUi } from "@/store/ui";
+
+/** Smallest → largest orb, for the size-linked parallax dial. */
+const MIN_ORB = 64;
+const MAX_ORB = 132;
 
 interface OrbProps {
   node: GraphNode;
@@ -17,8 +22,16 @@ interface OrbProps {
 }
 
 function OrbImpl({ node, dimmed, selected, expanding }: OrbProps) {
-  const size = orbSize(node);
-  const driftDelay = useMemo(() => `${-(node.id % 7000) / 1000}s`, [node.id]);
+  const sizeScale = useOrbDials((s) => s.sizeScale);
+  const entrance = useOrbDials((s) => s.entrance);
+  const base = orbSize(node);
+  const size = base * sizeScale;
+  /** Stable per-orb 0–1 used to desync the drift and breathe animations. */
+  const phase = useMemo(
+    () => ((node.id * 2654435761) >>> 0) % 1000 / 1000,
+    [node.id]
+  );
+  const sizeNorm = (base - MIN_ORB) / (MAX_ORB - MIN_ORB);
   const drag = useRef<{
     startX: number;
     startY: number;
@@ -86,6 +99,8 @@ function OrbImpl({ node, dimmed, selected, expanding }: OrbProps) {
           width: size,
           height: size,
           "--accent": node.accent,
+          "--orb-phase": phase,
+          "--orb-size-norm": sizeNorm,
         } as React.CSSProperties
       }
       onPointerEnter={() => !dimmed && setHovered(node.id)}
@@ -102,9 +117,9 @@ function OrbImpl({ node, dimmed, selected, expanding }: OrbProps) {
         className="orb-inner"
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 22 }}
+        transition={entrance}
       >
-        <div className="orb-float" style={{ animationDelay: driftDelay }}>
+        <div className="orb-float">
           <div className="orb-atmosphere" />
           <div className="orb-sphere">
             {/* eslint-disable-next-line @next/next/no-img-element */}

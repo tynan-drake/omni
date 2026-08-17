@@ -7,7 +7,7 @@ import { canvas } from "@/lib/canvas-controller";
 import { SearchIcon } from "./Icons";
 
 interface ArtistSearchProps {
-  variant: "hero" | "bar";
+  variant: "hero" | "bar" | "panel";
   placeholder?: string;
   autoFocus?: boolean;
 }

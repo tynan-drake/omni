@@ -11,6 +11,7 @@ const GROUPS: Array<{ title: string; rows: Array<[string[], string]> }> = [
       [["⌘", "K"], "Search the canvas / run actions"],
       [["F"], "Fit the whole universe in view"],
       [["+", "−"], "Zoom in / out"],
+      [["0"], "Zoom to 100%"],
       [["drag"], "Pan the canvas · drag orbs to rearrange"],
     ],
   },

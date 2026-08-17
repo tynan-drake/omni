@@ -10,9 +10,14 @@ export interface FilterState {
   decades: Set<number>;
 }
 
+/** Flyout panels hung off the left nav rail; only one is open at a time. */
+export type NavPanel = "search" | "recent";
+
 interface UiState {
   /** node id whose action menu is open */
   menuFor: number | null;
+  /** which nav rail flyout is open, if any */
+  navPanel: NavPanel | null;
   /** node id whose detail panel is open */
   detailFor: number | null;
   paletteOpen: boolean;
@@ -24,6 +29,8 @@ interface UiState {
   toast: string | null;
 
   openMenu: (id: number | null) => void;
+  setNavPanel: (panel: NavPanel | null) => void;
+  toggleNavPanel: (panel: NavPanel) => void;
   openDetail: (id: number | null) => void;
   setPaletteOpen: (open: boolean) => void;
   setPlaylistOpen: (open: boolean) => void;
@@ -40,6 +47,7 @@ let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useUi = create<UiState>((set) => ({
   menuFor: null,
+  navPanel: null,
   detailFor: null,
   paletteOpen: false,
   playlistOpen: false,
@@ -49,6 +57,9 @@ export const useUi = create<UiState>((set) => ({
   toast: null,
 
   openMenu: (id) => set({ menuFor: id }),
+  setNavPanel: (panel) => set({ navPanel: panel }),
+  toggleNavPanel: (panel) =>
+    set((s) => ({ navPanel: s.navPanel === panel ? null : panel })),
   openDetail: (id) =>
     set({ detailFor: id, menuFor: null, ...(id !== null && { playlistOpen: false }) }),
   setPaletteOpen: (open) => set({ paletteOpen: open }),
@@ -88,6 +99,7 @@ export const useUi = create<UiState>((set) => ({
   closeAll: () =>
     set({
       menuFor: null,
+      navPanel: null,
       detailFor: null,
       paletteOpen: false,
       playlistOpen: false,

@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import type { ArtistDetails, ArtistRef, Direction, LineageResult } from "@/lib/types";
 import { useGraph } from "./graph";
+import { useHistory } from "./history";
 import { useUi } from "./ui";
 
 interface ArtistCacheState {
@@ -49,6 +50,7 @@ export async function seedFromSearch(ref: ArtistRef): Promise<void> {
     ...ref,
     accent: details?.accent ?? "#8b7cf6",
   });
+  useHistory.getState().visit(ref);
 }
 
 /** Expand a node's lineage in a direction, adding orbs + edges to the graph. */

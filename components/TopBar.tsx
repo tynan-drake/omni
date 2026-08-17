@@ -2,12 +2,10 @@
 
 import { useMemo } from "react";
 import { motion } from "motion/react";
-import { canvas } from "@/lib/canvas-controller";
 import type { NodeKind } from "@/lib/types";
 import { useGraph } from "@/store/graph";
 import { useUi } from "@/store/ui";
-import ArtistSearch from "./ArtistSearch";
-import { FitIcon, PlaylistIcon, SparkleIcon } from "./Icons";
+import { SparkleIcon, TrashIcon } from "./Icons";
 
 const KIND_LABELS: Array<{ kind: NodeKind; label: string }> = [
   { kind: "seed", label: "Seeds" },
@@ -39,10 +37,6 @@ export default function TopBar() {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="topbar-brand">OMNI</div>
-
-      <ArtistSearch variant="bar" placeholder="Add artist  ( / )" />
-
       <div className="topbar-filters scrollbar-slim">
         {KIND_LABELS.map(({ kind, label }) => (
           <button
@@ -82,24 +76,13 @@ export default function TopBar() {
         )}
         <button
           className="bar-btn"
-          title="Fit view (F)"
-          onClick={() => canvas.fitAll()}
+          title="Clear canvas"
+          onClick={() => {
+            useGraph.getState().reset();
+            useUi.getState().closeAll();
+          }}
         >
-          <FitIcon />
-        </button>
-        <button
-          className="bar-btn"
-          title="Playlist from this universe (P)"
-          onClick={() => useUi.getState().setPlaylistOpen(true)}
-        >
-          <PlaylistIcon />
-        </button>
-        <button
-          className="bar-btn is-text"
-          title="Keyboard shortcuts (?)"
-          onClick={() => useUi.getState().setShortcutsOpen(true)}
-        >
-          ?
+          <TrashIcon />
         </button>
       </div>
     </motion.header>

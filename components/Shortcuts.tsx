@@ -41,14 +41,19 @@ export default function Shortcuts() {
       switch (e.key) {
         case "/": {
           e.preventDefault();
-          document
-            .querySelector<HTMLInputElement>("[data-omni-search]")
-            ?.focus();
+          // On the landing hero the search field is already on screen; once the
+          // canvas has orbs, search lives in the nav rail flyout.
+          const field = document.querySelector<HTMLInputElement>("[data-omni-search]");
+          if (field) field.focus();
+          else ui.setNavPanel("search");
           break;
         }
         case "f":
         case "F":
           canvas.fitAll();
+          break;
+        case "0":
+          canvas.zoomTo(1);
           break;
         case "+":
         case "=":

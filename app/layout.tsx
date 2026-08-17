@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
+import { Retune } from "retune";
 import "./globals.css";
 import "./panels.css";
 
@@ -11,6 +13,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const brunoAce = localFont({
+  src: "../public/BrunoAce-Regular.woff2",
+  variable: "--font-bruno-ace",
+  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -25,8 +33,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body>{children}</body>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} ${brunoAce.variable}`}
+    >
+      <body>
+        {children}
+        <Retune />
+      </body>
     </html>
   );
 }

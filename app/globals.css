@@ -8,6 +8,108 @@
   --brand: #8b7cf6;
   --surface: rgba(15, 19, 34, 0.74);
   --surface-border: rgba(255, 255, 255, 0.08);
+
+  /* left nav rail: flush to the screen edge, its own width, and the left edge
+   * everything else starts at. Keep --rail-gutter in sync with
+   * VIEWPORT_INSET.left in lib/canvas-controller.ts, which is what the canvas
+   * uses to centre and fit content beside the rail. */
+  --rail-width: 56px;
+  --rail-inset: 14px;
+  --rail-gutter: 62px;
+
+  /* landing wordmark — shipped defaults for the animated fill. The Wordmark
+   * dial panel (components/WordmarkDials.tsx) overrides these at runtime. */
+  --wordmark-c1: #cfd4ff;
+  --wordmark-c2: #8b7cf6;
+  --wordmark-c3: #4f9cf0;
+  --wordmark-angle: 135deg;
+  --wordmark-spread: 300%;
+  --wordmark-flow-dur: 7s;
+  --wordmark-hue-drift: 26deg;
+  --wordmark-saturation: 1.1;
+  --wordmark-shimmer-dur: 11s;
+  --wordmark-glow: 34px;
+  --wordmark-glow-pulse: 1.35;
+  --wordmark-glow-color: color-mix(in srgb, var(--brand) 35%, transparent);
+}
+
+/* ------------------------------------------------------------- orb dials
+ * Every value the Orbs control panel can tune lives here. The panel writes
+ * overrides onto :root at runtime (components/OrbDials.tsx); these are the
+ * shipped defaults, and the only place to change how orbs look by default.
+ * Per-orb inputs (--accent, --orb-phase, --orb-size-norm) are set on .orb.
+ */
+:root {
+  /* form */
+  --orb-shadow-y: 14px;
+  --orb-shadow-blur: 45px;
+  --orb-shadow-opacity: 0.33;
+  --orb-rim-width: 1.3px;
+  --orb-rim-glow: 38px;
+  --orb-rim-tint: 28%;
+  --orb-saturation: 1.15;
+  --orb-brightness: 1;
+  --orb-contrast: 1;
+  --orb-hue: 0deg;
+
+  /* light — one angle drives both the specular shine and the terminator.
+   * These are the -140° / 57 / 10 light source resolved to percentages. */
+  --orb-shine-x: 13.36%;
+  --orb-shine-y: 93.66%;
+  --orb-shine-strength: 0.4;
+  --orb-shine-spread: 100%;
+  --orb-limb-x: 43.57%;
+  --orb-limb-y: 57.66%;
+  --orb-limb-start: 65%;
+  --orb-limb-depth: 0.66;
+
+  /* atmosphere */
+  --orb-atmo-inset: 0%;
+  --orb-atmo-opacity: 0.3;
+  --orb-atmo-blur: 28px;
+  --orb-atmo-falloff: 75%;
+  --orb-atmo-breathe: 0.1;
+  --orb-atmo-breathe-glow: 0;
+  --orb-atmo-breathe-dur: 4s;
+
+  /* drift */
+  --orb-drift-lift: 6px;
+  --orb-drift-sway: 3px;
+  --orb-drift-tilt: 2deg;
+  --orb-drift-dur: 5.2s;
+  --orb-drift-spread: 6;
+  --orb-drift-parallax: 1.05;
+
+  /* interaction */
+  --orb-response: 700ms;
+  --orb-hover-scale: 1.14;
+  --orb-hover-lift: 4px;
+  --orb-hover-atmo-opacity: 0.96;
+  --orb-hover-atmo-scale: 1.33;
+  --orb-selected-atmo-opacity: 1;
+  --orb-selected-atmo-scale: 1.15;
+  --orb-selected-rim-width: 1.5px;
+  --orb-dim-opacity: 0.34;
+  --orb-dim-saturation: 0.25;
+
+  /* label */
+  --orb-label-offset: 0px;
+  --orb-label-opacity: 1;
+  --orb-label-name-size: 12px;
+  --orb-label-era-size: 9px;
+
+  /* edges */
+  --edge-opacity: 0.28;
+  --edge-width: 1.4;
+  --edge-flow-opacity: 0.75;
+  --edge-flow-width: 1.7;
+  --edge-dash: 3;
+  --edge-gap: 11;
+  --edge-flow-dur: 1.9s;
+  --edge-peer-dash: 2;
+  --edge-peer-gap: 7;
+  --edge-peer-opacity: 0.34;
+  --edge-dim-opacity: 0.1;
 }
 
 html,
@@ -88,30 +190,30 @@ body {
 }
 
 .edge-base {
-  stroke-opacity: 0.28;
-  stroke-width: 1.4;
+  stroke-opacity: var(--edge-opacity);
+  stroke-width: var(--edge-width);
 }
 
 .edge-directional .edge-flow {
-  stroke-opacity: 0.75;
-  stroke-width: 1.7;
-  stroke-dasharray: 3 11;
+  stroke-opacity: var(--edge-flow-opacity);
+  stroke-width: var(--edge-flow-width);
+  stroke-dasharray: var(--edge-dash) var(--edge-gap);
   stroke-linecap: round;
-  animation: edge-flow 1.9s linear infinite;
+  animation: edge-flow var(--edge-flow-dur) linear infinite;
 }
 
 .edge-peer .edge-base {
-  stroke-dasharray: 2 7;
-  stroke-opacity: 0.34;
+  stroke-dasharray: var(--edge-peer-dash) var(--edge-peer-gap);
+  stroke-opacity: var(--edge-peer-opacity);
 }
 
 .edge.is-dimmed {
-  opacity: 0.1;
+  opacity: var(--edge-dim-opacity);
 }
 
 @keyframes edge-flow {
   to {
-    stroke-dashoffset: -14;
+    stroke-dashoffset: calc((var(--edge-dash) + var(--edge-gap)) * -1);
   }
 }
 
@@ -128,8 +230,8 @@ body {
 }
 
 .orb.is-dimmed {
-  opacity: 0.16;
-  filter: saturate(0.25);
+  opacity: var(--orb-dim-opacity);
+  filter: saturate(var(--orb-dim-saturation));
 }
 
 .orb-inner,
@@ -138,17 +240,34 @@ body {
   inset: 0;
 }
 
+/*
+ * Drift period stretches with orb size when parallax is dialled up, so big
+ * orbs feel heavy and small ones skitter. --orb-phase desyncs each orb.
+ */
 .orb-float {
-  animation: orb-drift 7s ease-in-out infinite;
+  animation: orb-drift var(--orb-drift-dur) ease-in-out infinite;
+  animation-duration: calc(
+    var(--orb-drift-dur) * (1 + var(--orb-drift-parallax) * var(--orb-size-norm))
+  );
+  animation-delay: calc(var(--orb-phase) * var(--orb-drift-spread) * -1s);
 }
 
+/*
+ * The breathe pulse rides the `scale` property (not `transform`) so it
+ * composes with the hover/selected transforms instead of fighting them.
+ */
 .orb-atmosphere {
   position: absolute;
-  inset: -20%;
+  inset: var(--orb-atmo-inset);
   border-radius: 50%;
-  background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
-  opacity: 0.26;
-  filter: blur(14px);
+  background: radial-gradient(
+    circle,
+    var(--accent) 0%,
+    transparent var(--orb-atmo-falloff)
+  );
+  opacity: var(--orb-atmo-opacity);
+  animation: orb-breathe var(--orb-atmo-breathe-dur) ease-in-out infinite;
+  animation-delay: calc(var(--orb-phase) * var(--orb-drift-spread) * -1s);
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
@@ -158,8 +277,9 @@ body {
   border-radius: 50%;
   overflow: hidden;
   transform: translateZ(0);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 var(--orb-shadow-y) var(--orb-shadow-blur)
+    rgba(0, 0, 0, var(--orb-shadow-opacity));
+  transition: transform var(--orb-response) cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .orb-sphere img {
@@ -167,6 +287,8 @@ body {
   height: 100%;
   object-fit: cover;
   user-select: none;
+  filter: saturate(var(--orb-saturation)) brightness(var(--orb-brightness))
+    contrast(var(--orb-contrast)) hue-rotate(var(--orb-hue));
 }
 
 .orb-shine {
@@ -174,10 +296,10 @@ body {
   inset: 0;
   border-radius: 50%;
   background: radial-gradient(
-    circle at 32% 24%,
-    rgba(255, 255, 255, 0.42),
-    rgba(255, 255, 255, 0.06) 36%,
-    transparent 54%
+    circle at var(--orb-shine-x) var(--orb-shine-y),
+    rgba(255, 255, 255, var(--orb-shine-strength)),
+    rgba(255, 255, 255, calc(var(--orb-shine-strength) * 0.14)) 36%,
+    transparent var(--orb-shine-spread)
   );
 }
 
@@ -186,10 +308,10 @@ body {
   inset: 0;
   border-radius: 50%;
   background: radial-gradient(
-    circle at 34% 28%,
-    transparent 44%,
-    rgba(4, 8, 20, 0.34) 76%,
-    rgba(2, 4, 12, 0.75) 100%
+    circle at var(--orb-limb-x) var(--orb-limb-y),
+    transparent var(--orb-limb-start),
+    rgba(4, 8, 20, calc(var(--orb-limb-depth) * 0.45)) 76%,
+    rgba(2, 4, 12, var(--orb-limb-depth)) 100%
   );
 }
 
@@ -198,29 +320,38 @@ body {
   inset: 0;
   border-radius: 50%;
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent),
-    inset 0 0 14px color-mix(in srgb, var(--accent) 24%, transparent);
-  transition: box-shadow 0.25s ease;
+    inset 0 0 0 var(--orb-rim-width)
+      color-mix(in srgb, var(--accent) var(--orb-rim-tint), transparent),
+    inset 0 0 var(--orb-rim-glow)
+      color-mix(
+        in srgb,
+        var(--accent) calc(var(--orb-rim-tint) * 0.4),
+        transparent
+      );
+  transition: box-shadow var(--orb-response) ease;
 }
 
 .orb:hover .orb-sphere {
-  transform: scale(1.06);
+  transform: translateY(calc(var(--orb-hover-lift) * -1))
+    scale(var(--orb-hover-scale));
 }
 
 .orb:hover .orb-atmosphere {
-  opacity: 0.5;
-  transform: scale(1.07);
+  opacity: var(--orb-hover-atmo-opacity);
+  transform: scale(var(--orb-hover-atmo-scale));
 }
 
 .orb.is-selected .orb-rim {
   box-shadow:
-    inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 95%, white 10%),
-    inset 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent);
+    inset 0 0 0 var(--orb-selected-rim-width)
+      color-mix(in srgb, var(--accent) 95%, white 10%),
+    inset 0 0 calc(var(--orb-rim-glow) + 2px)
+      color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .orb.is-selected .orb-atmosphere {
-  opacity: 0.55;
-  transform: scale(1.12);
+  opacity: var(--orb-selected-atmo-opacity);
+  transform: scale(var(--orb-selected-atmo-scale));
 }
 
 .orb-loading {
@@ -235,26 +366,27 @@ body {
 
 .orb-label {
   position: absolute;
-  top: calc(100% + 9px);
+  top: calc(100% + var(--orb-label-offset));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1px;
+  opacity: var(--orb-label-opacity);
   pointer-events: none;
   white-space: nowrap;
 }
 
 .orb-name {
-  font-size: 12.5px;
+  font-size: var(--orb-label-name-size);
   font-weight: 600;
   letter-spacing: 0.01em;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
 }
 
 .orb-era {
-  font-size: 10.5px;
+  font-size: var(--orb-label-era-size);
   color: var(--ink-dim);
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
 }
@@ -262,10 +394,25 @@ body {
 @keyframes orb-drift {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translate(0, 0) rotate(calc(var(--orb-drift-tilt) * -1));
   }
   50% {
-    transform: translateY(-4px);
+    transform: translate(var(--orb-drift-sway), calc(var(--orb-drift-lift) * -1))
+      rotate(var(--orb-drift-tilt));
+  }
+}
+
+/* Atmosphere pulse. Both keyframes restate blur so it survives the animation. */
+@keyframes orb-breathe {
+  0%,
+  100% {
+    scale: 1;
+    filter: blur(var(--orb-atmo-blur)) brightness(1);
+  }
+  50% {
+    scale: calc(1 + var(--orb-atmo-breathe));
+    filter: blur(var(--orb-atmo-blur))
+      brightness(calc(1 + var(--orb-atmo-breathe-glow)));
   }
 }
 
@@ -344,6 +491,10 @@ body {
   width: 250px;
 }
 
+.artist-search.is-panel {
+  width: 100%;
+}
+
 .search-field {
   display: flex;
   align-items: center;
@@ -376,6 +527,34 @@ body {
 
 .is-bar .search-field:focus-within {
   border-color: color-mix(in srgb, var(--brand) 50%, transparent);
+}
+
+.is-panel .search-field {
+  height: 38px;
+  border-radius: 10px;
+  padding: 0 11px;
+}
+
+.is-panel .search-field:focus-within {
+  border-color: color-mix(in srgb, var(--brand) 50%, transparent);
+}
+
+.is-panel .search-field input {
+  font-size: 13px;
+}
+
+/* Inside the nav flyout the results sit in normal flow — an absolutely
+ * positioned dropdown would be clipped by the panel's own scroll container. */
+.is-panel .search-results {
+  position: static;
+  margin-top: 8px;
+  padding: 4px;
+  max-height: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .search-glyph {
@@ -457,6 +636,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* centre the hero in the canvas area rather than the window */
+  padding-left: var(--rail-gutter);
   z-index: 40;
   pointer-events: none;
 }
@@ -471,17 +652,65 @@ body {
   margin-top: -6vh;
 }
 
+/* The fill is a gradient wider than the text, panned back and forth (flow)
+ * while the whole thing drifts in hue and breathes its glow (shimmer).
+ * Every variable below is tunable live — see components/WordmarkDials.tsx. */
 .landing-wordmark {
+  font-family: var(--font-bruno-ace);
   font-size: clamp(56px, 9vw, 92px);
   font-weight: 700;
   letter-spacing: 0.34em;
   text-indent: 0.34em;
   line-height: 1;
-  background: linear-gradient(135deg, #cfd4ff 0%, var(--brand) 55%, #4f9cf0 100%);
+  background-image: linear-gradient(
+    var(--wordmark-angle),
+    var(--wordmark-c1) 0%,
+    var(--wordmark-c2) 30%,
+    var(--wordmark-c3) 55%,
+    var(--wordmark-c2) 78%,
+    var(--wordmark-c1) 100%
+  );
+  background-size: var(--wordmark-spread) 100%;
+  background-position: 0% 50%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  filter: drop-shadow(0 0 34px color-mix(in srgb, var(--brand) 35%, transparent));
+  animation:
+    wordmark-flow var(--wordmark-flow-dur) ease-in-out infinite,
+    wordmark-shimmer var(--wordmark-shimmer-dur) ease-in-out infinite;
+}
+
+/* Ping-pong rather than a one-way loop: seamless at any --wordmark-spread. */
+@keyframes wordmark-flow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes wordmark-shimmer {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 var(--wordmark-glow) var(--wordmark-glow-color))
+      hue-rotate(0deg) saturate(var(--wordmark-saturation));
+  }
+  50% {
+    filter: drop-shadow(
+        0 0 calc(var(--wordmark-glow) * var(--wordmark-glow-pulse))
+          var(--wordmark-glow-color)
+      )
+      hue-rotate(var(--wordmark-hue-drift)) saturate(var(--wordmark-saturation));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-wordmark {
+    animation: none;
+    filter: drop-shadow(0 0 var(--wordmark-glow) var(--wordmark-glow-color));
+  }
 }
 
 .landing-tagline {
@@ -504,7 +733,7 @@ body {
 .topbar {
   position: fixed;
   top: 14px;
-  left: 14px;
+  left: var(--rail-gutter);
   right: 14px;
   z-index: 50;
   display: flex;
@@ -599,6 +828,318 @@ body {
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* -------------------------------------------------------------- nav rail */
+
+.nav-rail {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 60;
+  width: var(--rail-width);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+  border-radius: 0 16px 16px 0;
+  background: var(--surface);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid var(--surface-border);
+  border-left: none;
+  border-top: none;
+  border-bottom: none;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
+}
+
+.nav-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 32px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-bruno-ace), var(--font-geist-sans), sans-serif;
+  font-size: 21px;
+  line-height: 1;
+  background-image: linear-gradient(135deg, #cfd4ff, var(--brand));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  transition: filter 0.18s ease, transform 0.18s ease;
+}
+
+.nav-logo:hover {
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--brand) 60%, transparent));
+  transform: translateY(-1px);
+}
+
+.nav-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.nav-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: auto;
+}
+
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nav-btn:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--surface-border);
+}
+
+.nav-btn.is-active {
+  color: #d9d2ff;
+  background: color-mix(in srgb, var(--brand) 22%, transparent);
+  border-color: color-mix(in srgb, var(--brand) 55%, transparent);
+}
+
+/* ----------------------------------------------------------- nav flyout */
+
+.nav-flyout {
+  position: fixed;
+  top: var(--rail-inset);
+  left: calc(var(--rail-gutter) + 4px);
+  z-index: 58;
+  width: 300px;
+  max-height: min(560px, calc(100dvh - 28px));
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.nav-flyout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 14px 9px;
+}
+
+.nav-flyout-head h2 {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.nav-flyout-clear {
+  font-size: 11px;
+  color: var(--ink-dim);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.nav-flyout-clear:hover {
+  color: var(--ink);
+}
+
+.nav-flyout-body {
+  padding: 0 8px 10px;
+  overflow-y: auto;
+}
+
+.nav-flyout-note {
+  padding: 8px 6px 2px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-dim);
+}
+
+.nav-recent-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+
+.nav-recent-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-recent-row img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.nav-recent-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-recent-hint {
+  font-size: 10.5px;
+  color: var(--ink-dim);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.nav-recent-row:hover .nav-recent-hint {
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------- zoombar */
+
+.zoombar {
+  position: fixed;
+  bottom: 20px;
+  /* centred on the canvas area, not the window — the rail eats the left edge */
+  left: calc(50% + var(--rail-gutter) / 2);
+  translate: -50% 0;
+  /* above the now-playing pill, so the open zoom menu isn't covered by it */
+  z-index: 72;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 8px;
+}
+
+.zoombar-inner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  padding: 0 8px;
+  border-radius: 12px;
+}
+
+.zoombar-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--surface-border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.zoom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zoom-btn:hover:not(:disabled) {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.zoom-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.zoom-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 6px 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.zoom-level:hover,
+.zoom-level.is-open {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.zoom-level-value {
+  min-width: 40px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.zoom-level svg {
+  color: var(--ink-dim);
+}
+
+.zoom-menu {
+  width: 200px;
+  padding: 4px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transform-origin: bottom center;
+}
+
+.zoom-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+
+.zoom-menu-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
 /* -------------------------------------------------------------- orb menu */
 
 .orb-menu {
@@ -611,6 +1152,13 @@ body {
   padding: 8px;
   will-change: transform;
   transform-origin: left center;
+}
+
+.orb-menu.glass {
+  background: rgba(9, 11, 20, 0.85);
+  box-shadow: none;
+  backdrop-filter: blur(50px);
+  -webkit-backdrop-filter: blur(50px);
 }
 
 .menu-header {

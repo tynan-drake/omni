@@ -4,10 +4,17 @@ import { useEffect, useRef } from "react";
 import { select } from "d3-selection";
 import { zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
 import "d3-transition";
-import { registerCanvasController } from "@/lib/canvas-controller";
+import {
+  publishScale,
+  registerCanvasController,
+  VIEWPORT_INSET,
+  ZOOM_MAX,
+  ZOOM_MIN,
+} from "@/lib/canvas-controller";
 import { getEdgeEls, getOrbEls } from "@/lib/registry";
 import { getPositions, onSimTick, syncGraph } from "@/lib/simulation";
 import { orbSize, useGraph } from "@/store/graph";
+import { useOrbDials } from "@/store/orb-dials";
 import { nodeMatchesFilter, useUi } from "@/store/ui";
 import { Orb } from "./Orb";
 import { EdgeLayer } from "./EdgeLayer";
@@ -26,6 +33,8 @@ export default function Canvas() {
   const selectedId = useGraph((s) => s.selectedId);
   const filter = useUi((s) => s.filter);
   const expanding = useUi((s) => s.expanding);
+  const sizeScale = useOrbDials((s) => s.sizeScale);
+  const epoch = useOrbDials((s) => s.epoch);
 
   // --- zoom / pan ---------------------------------------------------------
   useEffect(() => {
@@ -41,10 +50,20 @@ export default function Canvas() {
         "transform",
         `translate(${t.x},${t.y}) scale(${t.k})`
       );
+      publishScale(t.k);
+    };
+
+    /** Centre of the area left over once the nav rail and bars are excluded. */
+    const viewCentre = () => {
+      const { width, height } = container.getBoundingClientRect();
+      return {
+        x: VIEWPORT_INSET.left + (width - VIEWPORT_INSET.left - VIEWPORT_INSET.right) / 2,
+        y: VIEWPORT_INSET.top + (height - VIEWPORT_INSET.top - VIEWPORT_INSET.bottom) / 2,
+      };
     };
 
     const behavior = zoom<HTMLDivElement, unknown>()
-      .scaleExtent([0.15, 2.5])
+      .scaleExtent([ZOOM_MIN, ZOOM_MAX])
       .filter((event: Event) => {
         if (event.type === "dblclick") return false;
         if (event.type === "wheel") return true;
@@ -66,10 +85,8 @@ export default function Canvas() {
         initRaf = requestAnimationFrame(applyInitialCenter);
         return;
       }
-      sel.call(
-        behavior.transform,
-        zoomIdentity.translate(rect.width / 2, rect.height / 2)
-      );
+      const c = viewCentre();
+      sel.call(behavior.transform, zoomIdentity.translate(c.x, c.y));
     };
     applyInitialCenter();
 
@@ -87,25 +104,27 @@ export default function Canvas() {
         maxY = Math.max(maxY, p.y + p.r + 40); // room for labels
       }
       const { width, height } = container.getBoundingClientRect();
+      const availW = width - VIEWPORT_INSET.left - VIEWPORT_INSET.right;
+      const availH = height - VIEWPORT_INSET.top - VIEWPORT_INSET.bottom;
       const bw = Math.max(maxX - minX, 1);
       const bh = Math.max(maxY - minY, 1);
-      const k = Math.min(Math.max(Math.min(width / bw, height / bh) * 0.82, 0.15), 1.4);
+      const k = Math.min(
+        Math.max(Math.min(availW / bw, availH / bh) * 0.9, ZOOM_MIN),
+        1.4
+      );
       const cx = (minX + maxX) / 2;
       const cy = (minY + maxY) / 2;
-      const t = zoomIdentity
-        .translate(width / 2 - k * cx, height / 2 - k * cy)
-        .scale(k);
+      const c = viewCentre();
+      const t = zoomIdentity.translate(c.x - k * cx, c.y - k * cy).scale(k);
       sel.transition().duration(650).call(behavior.transform, t);
     };
 
     const flyTo = (nodeId: number) => {
       const p = getPositions().get(nodeId);
       if (!p) return;
-      const { width, height } = container.getBoundingClientRect();
       const k = Math.max(transformRef.current.k, 1);
-      const t = zoomIdentity
-        .translate(width / 2 - k * p.x, height / 2 - k * p.y)
-        .scale(k);
+      const c = viewCentre();
+      const t = zoomIdentity.translate(c.x - k * p.x, c.y - k * p.y).scale(k);
       sel.transition().duration(650).call(behavior.transform, t);
     };
 
@@ -113,10 +132,21 @@ export default function Canvas() {
       sel.transition().duration(220).call(behavior.scaleBy, factor);
     };
 
+    // Absolute scale, pivoting on the visible centre so the artwork under the
+    // middle of the canvas stays put.
+    const zoomTo = (k: number) => {
+      const c = viewCentre();
+      sel
+        .transition()
+        .duration(280)
+        .call(behavior.scaleTo, Math.min(Math.max(k, ZOOM_MIN), ZOOM_MAX), [c.x, c.y]);
+    };
+
     registerCanvasController({
       fitAll,
       flyTo,
       zoomBy,
+      zoomTo,
       getTransform: () => {
         const t = transformRef.current;
         return { x: t.x, y: t.y, k: t.k };
@@ -140,11 +170,11 @@ export default function Canvas() {
     syncGraph(
       order
         .filter((id) => nodes[id])
-        .map((id) => ({ id, r: orbSize(nodes[id]) / 2 })),
+        .map((id) => ({ id, r: (orbSize(nodes[id]) * sizeScale) / 2 })),
       edges.map((e) => ({ from: e.from, to: e.to, peer: e.kind === "peer" })),
       spawnPositions
     );
-  }, [nodes, order, edges, spawnFrom]);
+  }, [nodes, order, edges, spawnFrom, sizeScale]);
 
   // --- simulation tick → DOM ---------------------------------------------
   useEffect(() => {
@@ -194,8 +224,10 @@ export default function Canvas() {
           const node = nodes[id];
           if (!node) return null;
           return (
+            // The epoch changes when the dial panel asks to replay entrances,
+            // remounting every orb so its spring animation runs again.
             <Orb
-              key={id}
+              key={`${id}:${epoch}`}
               node={node}
               dimmed={!nodeMatchesFilter(filter, node)}
               selected={selectedId === id}

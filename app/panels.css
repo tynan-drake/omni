@@ -574,8 +574,9 @@
 
 .now-playing {
   position: fixed;
-  bottom: 20px;
-  left: 50%;
+  /* stacked above the zoom bar, which owns the bottom-centre slot */
+  bottom: 76px;
+  left: calc(50% + var(--rail-gutter) / 2);
   translate: -50% 0;
   z-index: 70;
   display: flex;
