@@ -536,7 +536,7 @@ export default function Canvas() {
       {(lineageRoles.root || lineageRoles.branch) && (
         <aside className="edge-legend glass" aria-label="Connection line legend">
           {lineageRoles.root && (
-            <span className="edge-legend-item">
+            <span className="edge-legend-item is-root">
               <svg viewBox="0 0 28 8" aria-hidden="true">
                 <line className="edge-legend-root-base" x1="1" y1="4" x2="27" y2="4" />
                 <line className="edge-legend-root-core" x1="1" y1="4" x2="27" y2="4" />
@@ -545,7 +545,7 @@ export default function Canvas() {
             </span>
           )}
           {lineageRoles.branch && (
-            <span className="edge-legend-item">
+            <span className="edge-legend-item is-branch">
               <svg viewBox="0 0 28 8" aria-hidden="true">
                 <line className="edge-legend-branch-guide" x1="1" y1="4" x2="27" y2="4" />
                 <line className="edge-legend-branch-buds" x1="1" y1="4" x2="27" y2="4" />

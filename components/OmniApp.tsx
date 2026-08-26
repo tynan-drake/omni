@@ -5,7 +5,6 @@ import Canvas from "./Canvas";
 import CanvasContextMenu from "./CanvasContextMenu";
 import CanvasPersistence from "./CanvasPersistence";
 import CommandPalette from "./CommandPalette";
-import DetailPanel from "./DetailPanel";
 import Landing from "./Landing";
 import NowPlaying from "./NowPlaying";
 import OrbDials from "./OrbDials";
@@ -29,7 +28,6 @@ export default function OmniApp() {
       <Canvas />
       <CanvasContextMenu />
       <OrbMenu />
-      <DetailPanel />
       <PlaylistBuilder />
       <CommandPalette />
       <ShortcutsOverlay />

@@ -187,7 +187,7 @@ export default function BridgePanel() {
                 <h3 id="active-bridge-title">{activeBridge.name}</h3>
                 <p>
                   {activeBridge.degraded
-                    ? "Similarity bridge"
+                    ? "Deezer similarity bridge"
                     : "Curated influence bridge"}
                 </p>
               </div>

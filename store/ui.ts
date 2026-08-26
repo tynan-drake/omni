@@ -109,15 +109,23 @@ export const useUi = create<UiState>((set) => ({
   bridgeRequest: null,
   splitFormation: null,
 
-  openMenu: (id) => set({ menuFor: id, ...(id !== null && { canvasContextMenu: null }) }),
+  openMenu: (id) =>
+    set({
+      menuFor: id,
+      detailFor: null,
+      ...(id !== null && { canvasContextMenu: null }),
+    }),
   setNavPanel: (panel) => set({ navPanel: panel }),
   toggleNavPanel: (panel) =>
     set((s) => ({ navPanel: s.navPanel === panel ? null : panel })),
   openDetail: (id) =>
     set({
       detailFor: id,
-      menuFor: null,
-      ...(id !== null && { playlistOpen: false, playlistArtistIds: null }),
+      ...(id !== null && {
+        menuFor: id,
+        playlistOpen: false,
+        playlistArtistIds: null,
+      }),
     }),
   setPaletteOpen: (open) => set({ paletteOpen: open }),
   setPlaylistOpen: (open) =>

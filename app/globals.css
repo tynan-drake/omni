@@ -9,6 +9,11 @@
   --surface: rgba(15, 19, 34, 0.74);
   --surface-border: rgba(255, 255, 255, 0.08);
 
+  /* Semantic lineage colors. Their luminance is intentionally matched so
+   * root and branch connections carry equal visual weight on the dark field. */
+  --lineage-root-color: #d8a657;
+  --lineage-branch-color: #6eb7f7;
+
   /* left nav rail: flush to the screen edge, its own width, and the left edge
    * everything else starts at. Keep --rail-gutter in sync with
    * VIEWPORT_INSET.left in lib/canvas-controller.ts, which is what the canvas
@@ -351,6 +356,14 @@ body {
   letter-spacing: 0.02em;
 }
 
+.edge-legend-item.is-root {
+  color: color-mix(in srgb, var(--lineage-root-color) 72%, var(--ink-dim));
+}
+
+.edge-legend-item.is-branch {
+  color: color-mix(in srgb, var(--lineage-branch-color) 72%, var(--ink-dim));
+}
+
 .edge-legend-item svg {
   width: 28px;
   height: 8px;
@@ -358,8 +371,12 @@ body {
 }
 
 .edge-legend-item line {
-  stroke: #cfd4e8;
   vector-effect: non-scaling-stroke;
+}
+
+.edge-legend-root-base,
+.edge-legend-root-core {
+  stroke: var(--lineage-root-color);
 }
 
 .edge-legend-root-base {
@@ -375,11 +392,13 @@ body {
 }
 
 .edge-legend-branch-guide {
+  stroke: var(--lineage-branch-color);
   stroke-width: var(--edge-branch-guide-width);
   stroke-opacity: var(--edge-branch-guide-opacity);
 }
 
 .edge-legend-branch-buds {
+  stroke: var(--lineage-branch-color);
   stroke-width: var(--edge-branch-width);
   stroke-opacity: var(--edge-branch-opacity);
   stroke-dasharray: var(--edge-branch-bud) var(--edge-branch-gap);
@@ -1149,6 +1168,11 @@ body {
   width: 100%;
 }
 
+.artist-search.is-context {
+  width: 100%;
+  padding: 0 3px 4px;
+}
+
 .search-field {
   display: flex;
   align-items: center;
@@ -1189,6 +1213,21 @@ body {
   padding: 0 11px;
 }
 
+.is-context .search-field {
+  height: 34px;
+  border-radius: 8px;
+  padding: 0 9px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.is-context .search-field:focus-within {
+  border-color: color-mix(in srgb, var(--brand) 50%, transparent);
+}
+
+.is-context .search-field input {
+  font-size: 12.5px;
+}
+
 .is-panel .search-field:focus-within {
   border-color: color-mix(in srgb, var(--brand) 50%, transparent);
 }
@@ -1209,6 +1248,12 @@ body {
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+.is-context .search-results {
+  top: calc(100% + 5px);
+  left: -5px;
+  right: -5px;
 }
 
 .search-glyph {
@@ -1826,7 +1871,7 @@ body {
 .menu-icon {
   display: inline-flex;
   width: 16px;
-  color: color-mix(in srgb, var(--accent) 80%, white 20%);
+  color: color-mix(in srgb, var(--brand) 80%, white 20%);
 }
 
 .menu-item.is-danger .menu-icon {
@@ -1839,7 +1884,7 @@ body {
   height: 12px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--accent);
+  border-top-color: var(--brand);
   animation: spin 0.8s linear infinite;
 }
 
@@ -1879,8 +1924,8 @@ body {
 
 .menu-links-row a:hover {
   color: var(--ink);
-  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--brand) 60%, transparent);
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
 }
 
 /* ----------------------------------------------------------------- toast */

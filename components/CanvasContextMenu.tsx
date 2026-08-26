@@ -2,10 +2,11 @@
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { motion } from "motion/react";
-import { removeArtists } from "@/store/actions";
+import { removeArtists, seedFromSearch } from "@/store/actions";
 import { useGraph } from "@/store/graph";
 import { useUi } from "@/store/ui";
-import { PlaylistIcon, SearchIcon, TrashIcon } from "./Icons";
+import ArtistSearch from "./ArtistSearch";
+import { PlaylistIcon, TrashIcon } from "./Icons";
 
 const PAGE_GAP = 10;
 
@@ -43,7 +44,11 @@ export default function CanvasContextMenu() {
   useEffect(() => {
     if (!menu) return;
     triggerRef.current = document.activeElement as HTMLElement | null;
-    itemRefs.current[0]?.focus();
+    if (canvasTarget) {
+      rootRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+    } else {
+      itemRefs.current[0]?.focus();
+    }
 
     const onPointerDown = (event: PointerEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) close(false);
@@ -55,31 +60,21 @@ export default function CanvasContextMenu() {
       window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("resize", onResize);
     };
-  }, [menu]);
+  }, [canvasTarget, menu]);
 
   if (!menu || (!canvasTarget && !nodeIds.length)) return null;
 
-  const openSearch = () => {
-    const ui = useUi.getState();
-    ui.openCanvasContextMenu(null);
-    ui.setNavPanel("search");
-    requestAnimationFrame(() => {
-      document.querySelector<HTMLInputElement>("[data-omni-search]")?.focus();
-    });
+  const addArtist = async (artist: Parameters<typeof seedFromSearch>[0]) => {
+    close(false);
+    await seedFromSearch(artist);
   };
 
   const actions = canvasTarget
     ? [
-        {
-          label: "Search and add artist",
-          icon: <SearchIcon />,
-          run: openSearch,
-          danger: false,
-        },
         ...(scopeIds.length
           ? [
               {
-                label: `Create playlist${nodeIds.length ? " from selection" : " from all artists"}`,
+                label: "Create playlist",
                 icon: <PlaylistIcon />,
                 run: () => {
                   const ui = useUi.getState();
@@ -124,7 +119,7 @@ export default function CanvasContextMenu() {
     <motion.div
       ref={rootRef}
       className="canvas-context-menu glass"
-      role="menu"
+      role={canvasTarget ? "dialog" : "menu"}
       aria-label={menuLabel}
       style={{ left: menu.x, top: menu.y }}
       initial={{ opacity: 0, scale: 0.96 }}
@@ -132,6 +127,7 @@ export default function CanvasContextMenu() {
       transition={{ type: "spring", duration: 0.3, bounce: 0 }}
       onContextMenu={(event) => event.preventDefault()}
       onKeyDown={(event) => {
+        if (canvasTarget || event.target instanceof HTMLInputElement) return;
         const index = itemRefs.current.indexOf(event.target as HTMLButtonElement);
         if (event.key === "Escape") {
           event.preventDefault();
@@ -156,6 +152,15 @@ export default function CanvasContextMenu() {
           ? `${scopeIds.length} artist${scopeIds.length === 1 ? "" : "s"} on canvas`
           : `${nodeIds.length} artist${nodeIds.length === 1 ? "" : "s"} selected`}
       </div>
+      {canvasTarget && (
+        <ArtistSearch
+          variant="context"
+          placeholder="Add artist…"
+          label="Add artist"
+          autoFocus
+          onPick={addArtist}
+        />
+      )}
       {actions.map((action, index) => (
         <button
           key={action.label}

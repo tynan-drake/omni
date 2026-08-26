@@ -20,6 +20,7 @@ interface DeezerTrack {
   duration: number;
   preview: string;
   album?: { id: number; title: string; cover_medium: string };
+  artist?: DeezerArtist;
 }
 
 interface DeezerAlbum {
@@ -116,6 +117,30 @@ export async function getAlbumTracks(albumId: number): Promise<Track[]> {
 export async function getRelatedArtists(id: number, limit = 20): Promise<ArtistRef[]> {
   const json = await dz<DeezerList<DeezerArtist>>(`/artist/${id}/related?limit=${limit}`);
   return (json.data ?? []).filter((a) => a.picture_medium).map(toArtistRef);
+}
+
+/**
+ * Deezer's artist radio is broader than its tightly clustered related-artist
+ * list. It is useful as a second-pass discovery graph for cross-genre bridges.
+ */
+export async function getRadioArtists(id: number, limit = 64): Promise<ArtistRef[]> {
+  const json = await dz<DeezerList<DeezerTrack>>(
+    `/artist/${id}/radio?limit=${Math.max(limit, 64)}`
+  );
+  const artists = new Map<number, ArtistRef>();
+  for (const track of json.data ?? []) {
+    const artist = track.artist;
+    if (
+      !artist ||
+      artist.id === id ||
+      !artist.picture_medium ||
+      PLACEHOLDER_IMG.test(artist.picture_medium)
+    ) {
+      continue;
+    }
+    if (!artists.has(artist.id)) artists.set(artist.id, toArtistRef(artist));
+  }
+  return [...artists.values()].slice(0, limit);
 }
 
 /** Estimate an artist's career start from their earliest release year. */

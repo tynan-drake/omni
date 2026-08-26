@@ -57,6 +57,38 @@ export const ExternalIcon = ({ size = 15, className }: IconProps) => (
   </svg>
 );
 
+export const SpotifyIcon = ({ size = 15, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M7.5 9.5c3.4-1 7.2-.7 10 .8" />
+    <path d="M8.2 12.6c2.8-.8 6-.5 8.5.8" />
+    <path d="M9 15.5c2.2-.5 4.6-.3 6.6.7" />
+  </svg>
+);
+
+export const AppleMusicIcon = ({ size = 15, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="3" y="3" width="18" height="18" rx="5" />
+    <path d="M10 16V8.5l7-1.5v7" />
+    <circle cx="8" cy="16" r="2" />
+    <circle cx="15" cy="14" r="2" />
+  </svg>
+);
+
+export const YouTubeMusicIcon = ({ size = 15, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="5.5" />
+    <path d="m10.5 9 4.5 3-4.5 3z" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+export const DeezerIcon = ({ size = 15, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M3 16h3v3H3zm4-4h3v7H7zm4-6h3v13h-3zm4 3h3v10h-3zm4-5h2v15h-2z" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 export const CloseIcon = ({ size = 15, className }: IconProps) => (
   <svg {...base(size)} className={className}>
     <path d="M18 6L6 18" />

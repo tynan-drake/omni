@@ -25,13 +25,18 @@ function EdgeLayerImpl() {
         const from = nodes[edge.from];
         const to = nodes[edge.to];
         if (!from || !to) return null;
-        const color = mixHex(from.accent, to.accent);
         const lineageRole =
           edge.kind === "back"
             ? "root"
             : edge.kind === "forward"
               ? "branch"
               : null;
+        const color =
+          lineageRole === "root"
+            ? "var(--lineage-root-color)"
+            : lineageRole === "branch"
+              ? "var(--lineage-branch-color)"
+              : mixHex(from.accent, to.accent);
         const inBridge = Boolean(activeBridge && activeEdgeIds.has(edge.id));
         const dimmed =
           !nodeMatchesFilter(filter, from) ||

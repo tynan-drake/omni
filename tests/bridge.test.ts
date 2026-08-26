@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ArtistRef, BridgeResult } from "../lib/types";
 
 const relatedMock = vi.hoisted(() => vi.fn());
-vi.mock("../lib/deezer", () => ({ getRelatedArtists: relatedMock }));
+const radioMock = vi.hoisted(() => vi.fn());
+vi.mock("../lib/deezer", () => ({
+  getRelatedArtists: relatedMock,
+  getRadioArtists: radioMock,
+}));
 
 import { similarityBridgePaths } from "../lib/bridge/similarity";
 import { useGraph } from "../store/graph";
@@ -155,6 +159,11 @@ describe("artist bridge graph state", () => {
 });
 
 describe("similarity bridge search", () => {
+  beforeEach(() => {
+    relatedMock.mockReset();
+    radioMock.mockReset();
+  });
+
   it("finds a bounded bridge through a common related artist", async () => {
     const a = artist(31, "Artist A");
     const b = artist(32, "Artist B");
@@ -167,5 +176,32 @@ describe("similarity bridge search", () => {
     const paths = await similarityBridgePaths(a, b);
     expect(paths[0].nodeIds).toEqual([a.id, common.id, b.id]);
     expect(paths[0].artists.get(common.id)?.name).toBe(common.name);
+    expect(paths[0].basis).toBe("related");
+  });
+
+  it("widens to Deezer radio when related artists stay in separate clusters", async () => {
+    const a = artist(41, "Artist A");
+    const b = artist(42, "Artist B");
+    const aNeighbour = artist(43, "A Neighbour");
+    const bNeighbour = artist(44, "B Neighbour");
+    const crossover = artist(45, "Crossover Artist");
+    relatedMock.mockResolvedValue([]);
+    radioMock.mockImplementation(async (id: number) => {
+      if (id === a.id) return [aNeighbour];
+      if (id === b.id) return [bNeighbour];
+      if (id === aNeighbour.id || id === bNeighbour.id) return [crossover];
+      return [];
+    });
+
+    const paths = await similarityBridgePaths(a, b);
+    expect(paths[0].nodeIds).toEqual([
+      a.id,
+      aNeighbour.id,
+      crossover.id,
+      bNeighbour.id,
+      b.id,
+    ]);
+    expect(paths[0].basis).toBe("radio");
+    expect(paths[0].nodeIds.length - 2).toBeLessThanOrEqual(4);
   });
 });

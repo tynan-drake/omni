@@ -35,6 +35,21 @@ const norm = (value: string) =>
 
 const edgeId = (from: number, to: number, kind: string) => `${from}-${to}-${kind}`;
 
+function endpointMention(name: string, endpoints: ArtistRef[]): ArtistRef | undefined {
+  const key = norm(name);
+  return endpoints.find((endpoint) => {
+    const endpointKey = norm(endpoint.name);
+    return (
+      key === endpointKey ||
+      (Math.min(key.length, endpointKey.length) >= 5 &&
+        (key.endsWith(endpointKey) ||
+          endpointKey.endsWith(key) ||
+          key.startsWith(endpointKey) ||
+          endpointKey.startsWith(key)))
+    );
+  });
+}
+
 async function withMetadata(artists: ArtistRef[]): Promise<BridgeArtist[]> {
   return Promise.all(
     artists.map(async (artist) => {
@@ -98,6 +113,11 @@ async function resolvedCuratedResult(
     names.map(async (name) => {
       const key = norm(name);
       if (refsByName.has(key)) return;
+      const endpoint = endpointMention(name, [a, b]);
+      if (endpoint) {
+        refsByName.set(key, endpoint);
+        return;
+      }
       const ref = await resolveArtistByName(name);
       if (ref) refsByName.set(key, ref);
     })
@@ -191,7 +211,8 @@ async function similarityResult(a: ArtistRef, b: ArtistRef): Promise<BridgeResul
       entries: [],
       edges: [],
       paths: [],
-      message: `No related-artist bridge was found between ${a.name} and ${b.name}.`,
+      message:
+        "A historical bridge may exist, but curated influence lookup is unavailable and Deezer’s discovery graph did not surface a reliable fallback.",
     };
   }
   const refs = new Map<number, ArtistRef>();
@@ -207,12 +228,14 @@ async function similarityResult(a: ArtistRef, b: ArtistRef): Promise<BridgeResul
       if (!relationships.has(id)) {
         const fromName = result.artists.get(from)?.name ?? "These artists";
         const toName = result.artists.get(to)?.name ?? "this artist";
+        const discoverySource =
+          result.basis === "radio" ? "artist-radio graph" : "related-artist graph";
         relationships.set(id, {
           id,
           from,
           to,
           kind: "similarity",
-          reason: `${fromName} and ${toName} are linked by Deezer’s related-artist graph.`,
+          reason: `${fromName} and ${toName} are linked by Deezer’s ${discoverySource}.`,
           sources: [],
         });
       }
@@ -270,7 +293,7 @@ export async function POST(request: Request) {
   const requestedMode = mode as BridgeMode;
 
   const sorted = [a.id, b.id].sort((left, right) => left - right);
-  const source = curatedBridgeAvailable() ? bridgeModel() : "similarity";
+  const source = curatedBridgeAvailable() ? bridgeModel() : "similarity-radio-v2";
   const cacheKey = `bridge-${sorted[0]}-${sorted[1]}-${requestedMode}-${source}`;
   const cached = await cacheGet<BridgeResult>(cacheKey);
   if (cached) return NextResponse.json(cached);
