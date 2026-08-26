@@ -9,7 +9,15 @@ import {
   ZOOM_MAX,
   ZOOM_MIN,
 } from "@/lib/canvas-controller";
-import { ChevronDownIcon, FitIcon, MinusIcon, PlusIcon } from "./Icons";
+import { useUi } from "@/store/ui";
+import {
+  ChevronDownIcon,
+  FitIcon,
+  MinusIcon,
+  PanIcon,
+  PlusIcon,
+  SelectIcon,
+} from "./Icons";
 
 const STEP = 1.35;
 
@@ -20,6 +28,7 @@ function useScale(): number {
 
 export default function ZoomBar() {
   const scale = useScale();
+  const canvasTool = useUi((state) => state.canvasTool);
   const [menuOpen, setMenuOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -60,7 +69,28 @@ export default function ZoomBar() {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="zoombar-inner glass">
+      <div className="zoombar-inner glass" role="toolbar" aria-label="Canvas tools">
+        <button
+          className={`zoom-btn tool-btn ${canvasTool === "pan" ? "is-active" : ""}`}
+          title="Pan canvas"
+          aria-label="Pan canvas"
+          aria-pressed={canvasTool === "pan"}
+          onClick={() => useUi.getState().setCanvasTool("pan")}
+        >
+          <PanIcon size={16} />
+        </button>
+        <button
+          className={`zoom-btn tool-btn ${canvasTool === "select" ? "is-active" : ""}`}
+          title="Select artists"
+          aria-label="Select artists"
+          aria-pressed={canvasTool === "select"}
+          onClick={() => useUi.getState().setCanvasTool("select")}
+        >
+          <SelectIcon size={16} />
+        </button>
+
+        <span className="zoombar-divider" aria-hidden="true" />
+
         <button
           className="zoom-btn"
           title="Zoom out (−)"
@@ -80,7 +110,7 @@ export default function ZoomBar() {
           <PlusIcon size={16} />
         </button>
 
-        <span className="zoombar-divider" />
+        <span className="zoombar-divider" aria-hidden="true" />
 
         <button
           className="zoom-btn is-wide"
@@ -91,7 +121,7 @@ export default function ZoomBar() {
           <FitIcon size={15} />
         </button>
 
-        <span className="zoombar-divider" />
+        <span className="zoombar-divider" aria-hidden="true" />
 
         <button
           className={`zoom-level ${menuOpen ? "is-open" : ""}`}

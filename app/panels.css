@@ -102,6 +102,17 @@
   color: var(--ink-dim);
 }
 
+.detail-bio {
+  padding-bottom: 2px;
+}
+
+.detail-bio p {
+  padding: 0 6px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-dim);
+}
+
 .track-row {
   display: flex;
   align-items: center;
@@ -125,46 +136,48 @@
   color: color-mix(in srgb, var(--accent) 70%, white 30%);
 }
 
-.track-index {
+.track-cover {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
-  color: var(--ink-dim);
+  overflow: hidden;
+  border-radius: 6px;
+  outline: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.track-num {
-  font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
+.track-cover img,
+.track-cover-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.track-play {
-  display: none;
+.track-cover-fallback {
   position: absolute;
   inset: 0;
-  margin: auto;
-  color: var(--ink);
+  background: linear-gradient(135deg, var(--accent), rgba(255, 255, 255, 0.12));
 }
 
-.track-row:hover .track-num {
-  visibility: hidden;
-}
-
-.track-row:hover .track-play {
-  display: block;
-}
-
-.track-progress {
+.track-cover-control {
+  position: absolute;
+  inset: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+  background: rgba(5, 7, 14, 0.56);
   color: #fff;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.track-row:hover .track-cover-control,
+.track-row.is-current .track-cover-control {
+  opacity: 1;
 }
 
 .track-text {

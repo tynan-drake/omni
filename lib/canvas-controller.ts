@@ -14,6 +14,7 @@ export interface ViewportTransform {
 
 interface CanvasController {
   fitAll: () => void;
+  fitNodes: (ids: number[]) => void;
   flyTo: (nodeId: number) => void;
   zoomBy: (factor: number) => void;
   /** Zoom to an absolute scale, keeping the viewport centre fixed. */
@@ -23,6 +24,7 @@ interface CanvasController {
 
 let impl: CanvasController = {
   fitAll: () => {},
+  fitNodes: () => {},
   flyTo: () => {},
   zoomBy: () => {},
   zoomTo: () => {},
@@ -35,6 +37,7 @@ export function registerCanvasController(c: CanvasController): void {
 
 export const canvas = {
   fitAll: () => impl.fitAll(),
+  fitNodes: (ids: number[]) => impl.fitNodes(ids),
   flyTo: (id: number) => impl.flyTo(id),
   zoomBy: (f: number) => impl.zoomBy(f),
   zoomTo: (k: number) => impl.zoomTo(k),

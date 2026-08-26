@@ -44,6 +44,7 @@ export default function PlaylistBuilder() {
 function Builder() {
   const nodes = useGraph((s) => s.nodes);
   const order = useGraph((s) => s.order);
+  const playlistArtistIds = useUi((s) => s.playlistArtistIds);
   const [minutes, setMinutes] = useState(60);
   const [mode, setMode] = useState<PlaylistMode>("mixed");
   const [tracks, setTracks] = useState<PlaylistTrack[] | null>(null);
@@ -51,11 +52,17 @@ function Builder() {
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [result, setResult] = useState<ExportResult | null>(null);
 
-  const artists = order.filter((id) => nodes[id]);
+  const scoped = playlistArtistIds !== null;
+  const artistScope = scoped ? new Set(playlistArtistIds) : null;
+  const artists = order.filter((id) => nodes[id] && (!artistScope || artistScope.has(id)));
   const seedName =
     order.map((id) => nodes[id]).find((n) => n?.kind === "seed")?.name ??
     (artists.length ? nodes[artists[0]]?.name : "canvas");
-  const playlistName = `Omni — ${seedName} universe`;
+  const playlistName = scoped
+    ? artists.length === 1
+      ? `Omni — ${nodes[artists[0]]?.name}`
+      : `Omni — ${artists.length} selected artists`
+    : `Omni — ${seedName} universe`;
 
   const generate = async () => {
     setGenerating(true);
@@ -144,7 +151,7 @@ function Builder() {
     >
       <div className="playlist-header">
         <h2>
-          <PlaylistIcon /> Playlist from this universe
+          <PlaylistIcon /> Playlist from {scoped ? "selected artists" : "this universe"}
         </h2>
         <button
           aria-label="Close playlist builder"
@@ -155,7 +162,7 @@ function Builder() {
       </div>
 
       <p className="playlist-sub">
-        {artists.length} artist{artists.length === 1 ? "" : "s"} on the canvas ·{" "}
+        {artists.length} {scoped ? "selected " : ""}artist{artists.length === 1 ? "" : "s"} ·{" "}
         {playlistName}
       </p>
 

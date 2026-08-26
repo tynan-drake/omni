@@ -102,6 +102,21 @@ export const FitIcon = ({ size = 15, className }: IconProps) => (
   </svg>
 );
 
+export const LinkIcon = ({ size = 15, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M10.5 13.5l3-3" />
+    <path d="M7.2 15.8l-1 1a3.2 3.2 0 0 1-4.5-4.5l3.1-3.1a3.2 3.2 0 0 1 4.5 0" />
+    <path d="M16.8 8.2l1-1a3.2 3.2 0 0 1 4.5 4.5l-3.1 3.1a3.2 3.2 0 0 1-4.5 0" />
+  </svg>
+);
+
+export const EditIcon = ({ size = 15, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z" />
+  </svg>
+);
+
 /* ------------------------------------------------------------------------
  * Navigation glyphs, exported from the Figma workspace nav (949:2230). These
  * keep the source artwork's 20×20 grid rather than the 24×24 grid above, so
@@ -123,6 +138,15 @@ export const NavSearchIcon = ({ size = 20, className }: IconProps) => (
   <svg {...nav(size)} className={className}>
     <path d="M8.75 15C12.2017 15 15 12.2017 15 8.75C15 5.29822 12.2017 2.5 8.75 2.5C5.29822 2.5 2.5 5.29822 2.5 8.75C2.5 12.2017 5.29822 15 8.75 15Z" />
     <path d="M13.1696 13.1696L17.5 17.5" />
+  </svg>
+);
+
+export const BridgeIcon = ({ size = 20, className }: IconProps) => (
+  <svg {...nav(size)} className={className}>
+    <circle cx="4" cy="10" r="2.1" />
+    <circle cx="16" cy="5" r="2.1" />
+    <circle cx="16" cy="15" r="2.1" />
+    <path d="M6 9.2l7.9-3.3M6 10.8l7.9 3.3" />
   </svg>
 );
 
@@ -194,5 +218,20 @@ export const TrashIcon = ({ size = 15, className }: IconProps) => (
     <path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" />
     <path d="M10 11v6" />
     <path d="M14 11v6" />
+  </svg>
+);
+
+export const PanIcon = ({ size = 15, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M7.5 11V6.5a1.5 1.5 0 0 1 3 0V10" />
+    <path d="M10.5 10V5a1.5 1.5 0 0 1 3 0v5" />
+    <path d="M13.5 10V6.5a1.5 1.5 0 0 1 3 0V11" />
+    <path d="M16.5 11V9a1.5 1.5 0 0 1 3 0v5c0 4.1-2.9 7-7 7h-1.1a6 6 0 0 1-4.8-2.4L3.3 14a1.5 1.5 0 0 1 2.3-1.9L7.5 14" />
+  </svg>
+);
+
+export const SelectIcon = ({ size = 15, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M5 3l13 9-6 1.2L9 19z" />
   </svg>
 );

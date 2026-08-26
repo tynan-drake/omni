@@ -14,6 +14,27 @@ import { CloseIcon, ExternalIcon, PauseIcon, PlayIcon } from "./Icons";
 const fmtDuration = (s: number) =>
   `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
+const fmtFans = (fans: number) =>
+  Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(fans);
+
+function artistBio(name: string, era: string | undefined, details: ArtistDetails | null) {
+  if (!details) {
+    return era
+      ? `${name} is part of the ${era} era in this music map.`
+      : `More artist information will appear here when it becomes available.`;
+  }
+
+  const career = details.startYear
+    ? `, with releases dating from ${details.startYear}`
+    : "";
+  const highlights = details.tracks.slice(0, 2).map((track) => track.title);
+  const topTracks = highlights.length
+    ? ` Top tracks include ${highlights.join(" and ")}.`
+    : "";
+
+  return `${name} has ${fmtFans(details.fans)} fans on Deezer${career}.${topTracks}`;
+}
+
 export default function DetailPanel() {
   const detailFor = useUi((s) => s.detailFor);
   const node = useGraph((s) => (detailFor !== null ? s.nodes[detailFor] : null));
@@ -73,7 +94,7 @@ function Panel({ nodeId }: { nodeId: number }) {
           <div className="detail-meta">
             {node.era && <span className="detail-era">{node.era}</span>}
             {details && (
-              <span>{Intl.NumberFormat("en", { notation: "compact" }).format(details.fans)} fans</span>
+              <span>{fmtFans(details.fans)} fans</span>
             )}
             {details?.startYear && <span>since {details.startYear}</span>}
           </div>
@@ -82,6 +103,11 @@ function Panel({ nodeId }: { nodeId: number }) {
 
       {node.reason && <p className="detail-reason">{node.reason}</p>}
 
+      <div className="detail-section detail-bio">
+        <h3>About</h3>
+        <p>{artistBio(node.name, node.era ?? undefined, details)}</p>
+      </div>
+
       <div className="detail-section">
         <h3>Top tracks</h3>
         {!details && !failed && <div className="detail-loading" />}
@@ -89,7 +115,7 @@ function Panel({ nodeId }: { nodeId: number }) {
         {details && !details.tracks.length && (
           <p className="detail-empty">No previews available.</p>
         )}
-        {details?.tracks.map((track, i) => {
+        {details?.tracks.map((track) => {
           const isCurrent = audio.track?.id === track.id;
           const playing = isCurrent && audio.playing;
           return (
@@ -98,24 +124,17 @@ function Panel({ nodeId }: { nodeId: number }) {
               className={`track-row ${isCurrent ? "is-current" : ""}`}
               onClick={() => audio.play(track, nodeId, node.name)}
             >
-              <span className="track-index">
-                {playing ? (
-                  <span
-                    className="track-progress"
-                    style={{
-                      background: `conic-gradient(${accent} ${audio.progress * 360}deg, rgba(255,255,255,0.12) 0deg)`,
-                    }}
-                  >
-                    <PauseIcon size={9} />
-                  </span>
-                ) : isCurrent ? (
-                  <PlayIcon size={11} />
+              <span className="track-cover" aria-hidden="true">
+                {track.cover ? (
+                  // Album covers are decorative; the track and album names follow.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={track.cover} alt="" />
                 ) : (
-                  <>
-                    <span className="track-num">{i + 1}</span>
-                    <PlayIcon size={11} className="track-play" />
-                  </>
+                  <span className="track-cover-fallback" />
                 )}
+                <span className="track-cover-control">
+                  {playing ? <PauseIcon size={10} /> : <PlayIcon size={10} />}
+                </span>
               </span>
               <span className="track-text">
                 <span className="track-title">{track.title}</span>

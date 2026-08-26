@@ -10,12 +10,18 @@ interface ArtistSearchProps {
   variant: "hero" | "bar" | "panel";
   placeholder?: string;
   autoFocus?: boolean;
+  label?: string;
+  excludeId?: number;
+  onPick?: (artist: ArtistRef) => void | Promise<void>;
 }
 
 export default function ArtistSearch({
   variant,
   placeholder = "Search an artist…",
   autoFocus,
+  label = "Search artists",
+  excludeId,
+  onPick,
 }: ArtistSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ArtistRef[]>([]);
@@ -29,8 +35,6 @@ export default function ArtistSearch({
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) {
-      setResults([]);
-      setOpen(false);
       return;
     }
     const seq = ++requestSeq.current;
@@ -39,7 +43,7 @@ export default function ArtistSearch({
         const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
         const json = (await res.json()) as { artists?: ArtistRef[] };
         if (seq !== requestSeq.current) return;
-        setResults(json.artists ?? []);
+        setResults((json.artists ?? []).filter((artist) => artist.id !== excludeId));
         setOpen(true);
         setActive(0);
       } catch {
@@ -47,7 +51,7 @@ export default function ArtistSearch({
       }
     }, 250);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [excludeId, query]);
 
   // Close on outside click.
   useEffect(() => {
@@ -63,10 +67,11 @@ export default function ArtistSearch({
     setQuery("");
     setSeeding(true);
     inputRef.current?.blur();
-    await seedFromSearch(artist);
+    if (onPick) await onPick(artist);
+    else await seedFromSearch(artist);
     setSeeding(false);
     setTimeout(() => canvas.fitAll(), 450);
-  }, []);
+  }, [onPick]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (!open || !results.length) {
@@ -90,16 +95,27 @@ export default function ArtistSearch({
 
   return (
     <div ref={boxRef} className={`artist-search is-${variant}`}>
+      <label className="sr-only" htmlFor={`artist-search-${variant}`}>
+        {label}
+      </label>
       <div className="search-field glass">
         <SearchIcon size={variant === "hero" ? 18 : 14} className="search-glyph" />
         <input
           ref={inputRef}
+          id={`artist-search-${variant}`}
           data-omni-search
           value={query}
           placeholder={placeholder}
           spellCheck={false}
           autoFocus={autoFocus}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            setQuery(value);
+            if (value.trim().length < 2) {
+              setResults([]);
+              setOpen(false);
+            }
+          }}
           onKeyDown={onKeyDown}
           onFocus={() => results.length && setOpen(true)}
         />

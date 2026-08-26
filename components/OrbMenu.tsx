@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { canvas } from "@/lib/canvas-controller";
 import { getPositions } from "@/lib/simulation";
 import { streamingLinks } from "@/lib/links";
+import { primeSplitAudio } from "@/lib/split-audio";
 import type { Direction } from "@/lib/types";
-import { expand, fetchDetails } from "@/store/actions";
-import { orbSize, useGraph } from "@/store/graph";
+import { expand, fetchDetails, removeArtists } from "@/store/actions";
+import { useGraph } from "@/store/graph";
 import { useAudio } from "@/store/audio";
 import { useUi } from "@/store/ui";
 import {
@@ -15,6 +16,7 @@ import {
   CheckIcon,
   CloseIcon,
   ExternalIcon,
+  LinkIcon,
   PauseIcon,
   PlayIcon,
   RootsIcon,
@@ -41,7 +43,7 @@ function Menu({ nodeId }: { nodeId: number }) {
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   // Follow the orb while the simulation drifts.
-  useEffect(() => {
+  useLayoutEffect(() => {
     let raf = 0;
     const track = () => {
       const el = ref.current;
@@ -61,10 +63,11 @@ function Menu({ nodeId }: { nodeId: number }) {
           window.innerHeight - h - 12
         );
         el.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
+        el.classList.replace("invisible", "visible");
       }
       raf = requestAnimationFrame(track);
     };
-    raf = requestAnimationFrame(track);
+    track();
     return () => cancelAnimationFrame(raf);
   }, [nodeId]);
 
@@ -86,13 +89,14 @@ function Menu({ nodeId }: { nodeId: number }) {
   };
 
   const expandDir = (direction: Direction) => {
+    primeSplitAudio();
     void expand(nodeId, direction);
     useUi.getState().openMenu(null);
   };
 
   const remove = () => {
     useUi.getState().openMenu(null);
-    useGraph.getState().removeNode(nodeId);
+    removeArtists([nodeId]);
   };
 
   const item = (
@@ -115,57 +119,64 @@ function Menu({ nodeId }: { nodeId: number }) {
   return (
     <motion.div
       ref={ref}
-      className="orb-menu glass"
-      style={{ "--accent": node.accent } as React.CSSProperties}
-      initial={{ opacity: 0, scale: 0.86 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.92 }}
-      transition={{ type: "spring", stiffness: 420, damping: 30 }}
-      onClick={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
+      className="fixed left-0 top-0 z-[55] invisible will-change-transform"
     >
-      <div className="menu-header">
-        <span className="menu-title">{node.name}</span>
-        {node.reason && <span className="menu-reason">{node.reason}</span>}
-      </div>
-
-      {item(
-        isPlayingThis ? <PauseIcon /> : <PlayIcon />,
-        isPlayingThis ? "Pause preview" : "Play preview",
-        playPreview,
-        { busy: loadingPreview }
-      )}
-      {item(<RootsIcon />, "Roots — who shaped them", () => expandDir("back"), {
-        done: Boolean(expanded?.back),
-        busy: Boolean(expanding[`${nodeId}:back`]),
-      })}
-      {item(
-        <BranchesIcon />,
-        "Branches — who they shaped",
-        () => expandDir("forward"),
-        {
-          done: Boolean(expanded?.forward),
-          busy: Boolean(expanding[`${nodeId}:forward`]),
-        }
-      )}
-      {item(<TracksIcon />, "Tracks & details", () =>
-        useUi.getState().openDetail(nodeId)
-      )}
-
-      <div className="menu-links">
-        <span className="menu-links-label">
-          <ExternalIcon size={12} /> Open in
-        </span>
-        <div className="menu-links-row">
-          {streamingLinks(node.name, node.id).map((l) => (
-            <a key={l.name} href={l.url} target="_blank" rel="noreferrer">
-              {l.name}
-            </a>
-          ))}
+      <motion.div
+        className="orb-menu glass backdrop-blur-3xl"
+        style={{ "--accent": node.accent } as React.CSSProperties}
+        initial={{ opacity: 0, scale: 0.86 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.92 }}
+        transition={{ type: "spring", stiffness: 420, damping: 30 }}
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <div className="menu-header">
+          <span className="menu-title">{node.name}</span>
+          {node.reason && <span className="menu-reason">{node.reason}</span>}
         </div>
-      </div>
 
-      {item(<CloseIcon />, "Remove from canvas", remove, { danger: true })}
+        {item(
+          isPlayingThis ? <PauseIcon /> : <PlayIcon />,
+          isPlayingThis ? "Pause preview" : "Play preview",
+          playPreview,
+          { busy: loadingPreview }
+        )}
+        {item(<RootsIcon />, "Roots — who shaped them", () => expandDir("back"), {
+          done: Boolean(expanded?.back),
+          busy: Boolean(expanding[`${nodeId}:back`]),
+        })}
+        {item(
+          <BranchesIcon />,
+          "Branches — who they shaped",
+          () => expandDir("forward"),
+          {
+            done: Boolean(expanded?.forward),
+            busy: Boolean(expanding[`${nodeId}:forward`]),
+          }
+        )}
+        {item(<LinkIcon />, "Connect to…", () =>
+          useUi.getState().startConnecting(nodeId)
+        )}
+        {item(<TracksIcon />, "Tracks & details", () =>
+          useUi.getState().openDetail(nodeId)
+        )}
+
+        <div className="menu-links">
+          <span className="menu-links-label">
+            <ExternalIcon size={12} /> Open in
+          </span>
+          <div className="menu-links-row">
+            {streamingLinks(node.name, node.id).map((l) => (
+              <a key={l.name} href={l.url} target="_blank" rel="noreferrer">
+                {l.name}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {item(<CloseIcon />, "Remove from canvas", remove, { danger: true })}
+      </motion.div>
     </motion.div>
   );
 }

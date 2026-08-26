@@ -8,7 +8,8 @@ import { useGraph } from "@/store/graph";
 import { hydrateHistory, useHistory } from "@/store/history";
 import { useUi, type NavPanel } from "@/store/ui";
 import ArtistSearch from "./ArtistSearch";
-import { AudioIcon, HelpIcon, HistoryIcon, NavSearchIcon } from "./Icons";
+import BridgePanel from "./BridgePanel";
+import { AudioIcon, BridgeIcon, HelpIcon, HistoryIcon, NavSearchIcon } from "./Icons";
 
 /** Persistent left nav rail: brand/home, workflow tools, help pinned to the foot. */
 export default function Sidebar() {
@@ -51,6 +52,14 @@ export default function Sidebar() {
             onClick={() => toggleNavPanel("recent")}
           >
             <HistoryIcon />
+          </NavButton>
+          <NavButton
+            panel="bridges"
+            active={navPanel === "bridges"}
+            label="Artist bridges"
+            onClick={() => toggleNavPanel("bridges")}
+          >
+            <BridgeIcon />
           </NavButton>
           <NavButton
             active={playlistOpen}
@@ -106,14 +115,20 @@ function NavButton({ panel, active, label, onClick, children }: NavButtonProps) 
 
 function NavFlyout({ panel }: { panel: NavPanel }) {
   return (
-    <motion.div
-      className="nav-flyout glass"
+      <motion.div
+      className={`nav-flyout glass ${panel === "bridges" ? "is-bridges" : ""}`}
       initial={{ x: -12, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: -12, opacity: 0 }}
       transition={{ type: "spring", stiffness: 460, damping: 36 }}
     >
-      {panel === "search" ? <SearchPanel /> : <RecentPanel />}
+      {panel === "search" ? (
+        <SearchPanel />
+      ) : panel === "recent" ? (
+        <RecentPanel />
+      ) : (
+        <BridgePanel />
+      )}
     </motion.div>
   );
 }

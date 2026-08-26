@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { useGraph } from "@/store/graph";
 import ArtistSearch from "./ArtistSearch";
@@ -9,14 +8,8 @@ const EXAMPLES = ["Kendrick Lamar", "Radiohead", "Miles Davis", "Björk", "Daft 
 
 export default function Landing() {
   const hasNodes = useGraph((s) => s.order.length > 0);
-  const [gone, setGone] = useState(false);
-
-  // Re-show the hero if the canvas is reset back to empty.
-  useEffect(() => {
-    if (!hasNodes && gone) setGone(false);
-  }, [hasNodes, gone]);
-
-  if (gone) return null;
+  const hydrated = useGraph((s) => s.hydrated);
+  if (!hydrated || hasNodes) return null;
 
   const trySearch = (name: string) => {
     const input = document.querySelector<HTMLInputElement>("[data-omni-search]");
@@ -33,19 +26,12 @@ export default function Landing() {
   return (
     <motion.div
       className="landing"
-      style={{ pointerEvents: hasNodes ? "none" : undefined }}
-      initial={false}
-      animate={
-        hasNodes ? { opacity: 0, scale: 1.04 } : { opacity: 1, scale: 1 }
-      }
-      transition={{ duration: 0.45 }}
-      onAnimationComplete={() => {
-        if (useGraph.getState().order.length > 0) setGone(true);
-      }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35 }}
     >
       <motion.div
         className="landing-inner"
-        style={{ pointerEvents: hasNodes ? "none" : undefined }}
         initial={{ y: 18, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}

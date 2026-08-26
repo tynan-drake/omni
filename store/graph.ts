@@ -2,44 +2,52 @@
 
 import { create } from "zustand";
 import type {
+  ArtistBridge,
   ArtistRef,
+  BridgeResult,
   Direction,
+  EdgeKind,
   GraphEdge,
   GraphNode,
   LineageResult,
   LineageSource,
+  RelationshipKind,
 } from "@/lib/types";
 
-export interface SpawnHint {
-  x: number;
-  y: number;
-}
-
-interface GraphState {
+export interface GraphSnapshot {
   nodes: Record<number, GraphNode>;
   order: number[];
   edges: GraphEdge[];
-  /** parent node each new node should spawn near (consumed by Canvas). */
   spawnFrom: Record<number, number>;
   expanded: Record<number, Partial<Record<Direction, boolean>>>;
   selectedId: number | null;
   lastSource: LineageSource | null;
+  bridges: Record<string, ArtistBridge>;
+  bridgeOrder: string[];
+  activeBridgeId: string | null;
+}
 
+interface GraphState extends GraphSnapshot {
+  hydrated: boolean;
+  /** Ephemeral multi-selection; only selectedId is persisted for compatibility. */
+  selectedIds: number[];
   addSeed: (artist: ArtistRef & { accent: string }) => void;
   applyLineage: (parentId: number, result: LineageResult) => void;
-  removeNode: (id: number) => void;
+  applyBridge: (result: BridgeResult) => string | null;
+  renameBridge: (id: string, name: string) => void;
+  deleteBridge: (id: string) => void;
+  setActiveBridge: (id: string | null) => void;
+  removeNode: (id: number) => number;
+  removeNodes: (ids: number[]) => number;
   select: (id: number | null) => void;
+  setSelection: (ids: number[]) => void;
+  toggleSelection: (id: number) => void;
+  hydrate: (snapshot: GraphSnapshot | null) => void;
+  snapshot: () => GraphSnapshot;
   reset: () => void;
 }
 
-const edgeKey = (a: number, b: number) => (a < b ? `${a}|${b}` : `${b}|${a}`);
-
-function hasEdge(edges: GraphEdge[], a: number, b: number): boolean {
-  const key = edgeKey(a, b);
-  return edges.some((e) => edgeKey(e.from, e.to) === key);
-}
-
-export const useGraph = create<GraphState>((set) => ({
+const emptyGraph = (): GraphSnapshot => ({
   nodes: {},
   order: [],
   edges: [],
@@ -47,10 +55,231 @@ export const useGraph = create<GraphState>((set) => ({
   expanded: {},
   selectedId: null,
   lastSource: null,
+  bridges: {},
+  bridgeOrder: [],
+  activeBridgeId: null,
+});
+
+const edgeKey = (a: number, b: number) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+const withOrigin = (origins: string[] | undefined, origin: string) =>
+  origins?.includes(origin) ? origins : [...(origins ?? []), origin];
+const relationshipOf = (kind: EdgeKind): RelationshipKind =>
+  kind === "back" || kind === "forward" ? "influence" : kind;
+
+function hasEdge(edges: GraphEdge[], a: number, b: number): boolean {
+  const key = edgeKey(a, b);
+  return edges.some((edge) => edgeKey(edge.from, edge.to) === key);
+}
+
+function lineageParent(origin: string): number | null {
+  const match = /^lineage:(\d+):(back|forward)$/.exec(origin);
+  return match ? Number(match[1]) : null;
+}
+
+function lineageDirection(origin: string): Direction | null {
+  const match = /^lineage:\d+:(back|forward)$/.exec(origin);
+  return (match?.[1] as Direction | undefined) ?? null;
+}
+
+function bridgeOriginId(origin: string): string | null {
+  return origin.startsWith("bridge:") ? origin.slice("bridge:".length) : null;
+}
+
+/**
+ * Find descendants owned exclusively by the nodes already being removed.
+ * Independently seeded artists and artists with a surviving lineage/bridge
+ * owner are retained, and retained nodes stop the cascade below them.
+ */
+function collectOwnedRemoval(data: GraphSnapshot, requestedIds: number[]): Set<number> {
+  const removed = new Set(requestedIds.filter((id) => Boolean(data.nodes[id])));
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [rawChild, parentId] of Object.entries(data.spawnFrom)) {
+      const childId = Number(rawChild);
+      if (!removed.has(parentId) || removed.has(childId)) continue;
+      const child = data.nodes[childId];
+      if (!child || child.origins.includes("seed")) continue;
+
+      const hasSurvivingOwner = child.origins.some((origin) => {
+        const lineage = lineageParent(origin);
+        if (lineage !== null) return !removed.has(lineage) && Boolean(data.nodes[lineage]);
+
+        const bridgeId = bridgeOriginId(origin);
+        if (bridgeId === null) return false;
+        const bridge = data.bridges[bridgeId];
+        return Boolean(
+          bridge && bridge.endpointIds.every((endpointId) => !removed.has(endpointId))
+        );
+      });
+      if (hasSurvivingOwner) continue;
+
+      removed.add(childId);
+      changed = true;
+    }
+  }
+  return removed;
+}
+
+function removeNodesFromData(
+  source: GraphSnapshot,
+  requestedIds: number[]
+): { data: GraphSnapshot; removedIds: Set<number> } {
+  const beforeIds = new Set(source.order.filter((id) => Boolean(source.nodes[id])));
+  const cascade = collectOwnedRemoval(source, requestedIds);
+  let data = source;
+
+  // A bridge cannot survive without both endpoints. Its existing cleanup also
+  // preserves connector artists owned by another bridge or explored lineage.
+  for (const bridgeId of source.bridgeOrder) {
+    const bridge = data.bridges[bridgeId];
+    if (bridge?.endpointIds.some((id) => cascade.has(id))) {
+      data = deleteBridgeFromData(data, bridgeId);
+    }
+  }
+
+  const nodes = { ...data.nodes };
+  for (const id of cascade) delete nodes[id];
+  const survivingIds = new Set(Object.keys(nodes).map(Number));
+  const removedIds = new Set([...beforeIds].filter((id) => !survivingIds.has(id)));
+
+  // Strip ownership records tied to deleted parents/bridges from survivors.
+  for (const [rawId, node] of Object.entries(nodes)) {
+    const origins = node.origins.filter((origin) => {
+      const lineage = lineageParent(origin);
+      if (lineage !== null) return !removedIds.has(lineage);
+      const bridgeId = bridgeOriginId(origin);
+      return bridgeId === null || Boolean(data.bridges[bridgeId]);
+    });
+    nodes[Number(rawId)] = { ...node, origins };
+  }
+
+  const edges = data.edges
+    .filter((edge) => survivingIds.has(edge.from) && survivingIds.has(edge.to))
+    .map((edge) => ({
+      ...edge,
+      origins: edge.origins.filter((origin) => {
+        const lineage = lineageParent(origin);
+        if (lineage !== null) return !removedIds.has(lineage);
+        const bridgeId = bridgeOriginId(origin);
+        return bridgeId === null || Boolean(data.bridges[bridgeId]);
+      }),
+    }))
+    .filter((edge) => edge.origins.length > 0);
+
+  const spawnFrom: Record<number, number> = {};
+  for (const id of survivingIds) {
+    const currentParent = data.spawnFrom[id];
+    if (currentParent !== undefined && survivingIds.has(currentParent)) {
+      spawnFrom[id] = currentParent;
+      continue;
+    }
+    const replacement = nodes[id].origins
+      .map(lineageParent)
+      .find((parent): parent is number => parent !== null && survivingIds.has(parent));
+    if (replacement !== undefined) spawnFrom[id] = replacement;
+  }
+
+  const expanded = Object.fromEntries(
+    Object.entries(data.expanded)
+      .filter(([id]) => survivingIds.has(Number(id)))
+      .map(([id, directions]) => [id, { ...directions }])
+  ) as GraphSnapshot["expanded"];
+  for (const removedId of removedIds) {
+    for (const origin of source.nodes[removedId]?.origins ?? []) {
+      const parentId = lineageParent(origin);
+      const direction = lineageDirection(origin);
+      if (parentId === null || direction === null || !expanded[parentId]) continue;
+      delete expanded[parentId][direction];
+      if (!Object.keys(expanded[parentId]).length) delete expanded[parentId];
+    }
+  }
+  const selectedId =
+    data.selectedId !== null && survivingIds.has(data.selectedId) ? data.selectedId : null;
+
+  return {
+    data: {
+      ...data,
+      nodes,
+      order: data.order.filter((id) => survivingIds.has(id)),
+      edges,
+      spawnFrom,
+      expanded,
+      selectedId,
+    },
+    removedIds,
+  };
+}
+
+function deleteBridgeFromData(data: GraphSnapshot, bridgeId: string): GraphSnapshot {
+  if (!data.bridges[bridgeId]) return data;
+  const origin = `bridge:${bridgeId}`;
+  const edges = data.edges
+    .map((edge) => ({
+      ...edge,
+      origins: (edge.origins ?? []).filter((item) => item !== origin),
+    }))
+    .filter((edge) => edge.origins.length > 0);
+  const connected = new Set(edges.flatMap((edge) => [edge.from, edge.to]));
+  const nodes: Record<number, GraphNode> = {};
+  for (const [rawId, node] of Object.entries(data.nodes)) {
+    const id = Number(rawId);
+    const origins = (node.origins ?? []).filter((item) => item !== origin);
+    if (origins.length || connected.has(id)) nodes[id] = { ...node, origins };
+  }
+  const bridges = { ...data.bridges };
+  delete bridges[bridgeId];
+  const order = data.order.filter((id) => Boolean(nodes[id]));
+  const expanded = Object.fromEntries(
+    Object.entries(data.expanded).filter(([id]) => Boolean(nodes[Number(id)]))
+  ) as GraphSnapshot["expanded"];
+  const spawnFrom = Object.fromEntries(
+    Object.entries(data.spawnFrom).filter(
+      ([child, parent]) => Boolean(nodes[Number(child)]) && Boolean(nodes[parent])
+    )
+  ) as GraphSnapshot["spawnFrom"];
+  return {
+    ...data,
+    nodes,
+    order,
+    edges,
+    expanded,
+    spawnFrom,
+    bridges,
+    bridgeOrder: data.bridgeOrder.filter((id) => id !== bridgeId),
+    activeBridgeId: data.activeBridgeId === bridgeId ? null : data.activeBridgeId,
+    selectedId: data.selectedId !== null && nodes[data.selectedId] ? data.selectedId : null,
+  };
+}
+
+function makeBridgeId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `bridge-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export const useGraph = create<GraphState>((set, get) => ({
+  ...emptyGraph(),
+  hydrated: false,
+  selectedIds: [],
 
   addSeed: (artist) =>
-    set((s) => {
-      if (s.nodes[artist.id]) return { selectedId: artist.id };
+    set((state) => {
+      const existing = state.nodes[artist.id];
+      if (existing) {
+        return {
+          nodes: {
+            ...state.nodes,
+            [artist.id]: {
+              ...existing,
+              kind: "seed" as const,
+              origins: withOrigin(existing.origins, "seed"),
+            },
+          },
+          selectedId: artist.id,
+          selectedIds: [artist.id],
+        };
+      }
       const node: GraphNode = {
         id: artist.id,
         name: artist.name,
@@ -62,24 +291,29 @@ export const useGraph = create<GraphState>((set) => ({
         era: null,
         decade: null,
         generation: 0,
+        origins: ["seed"],
       };
       return {
-        nodes: { ...s.nodes, [artist.id]: node },
-        order: [...s.order, artist.id],
+        nodes: { ...state.nodes, [artist.id]: node },
+        order: [...state.order, artist.id],
         selectedId: artist.id,
+        selectedIds: [artist.id],
       };
     }),
 
   applyLineage: (parentId, result) =>
-    set((s) => {
-      const parent = s.nodes[parentId];
+    set((state) => {
+      const parent = state.nodes[parentId];
       if (!parent) return {};
-
-      const nodes = { ...s.nodes };
-      const order = [...s.order];
-      const edges = [...s.edges];
-      const spawnFrom = { ...s.spawnFrom };
+      const nodes = {
+        ...state.nodes,
+        [parentId]: { ...parent, origins: withOrigin(parent.origins, "explored") },
+      };
+      const order = [...state.order];
+      const edges = state.edges.map((edge) => ({ ...edge }));
+      const spawnFrom = { ...state.spawnFrom };
       const kind = result.direction === "back" ? "root" : "branch";
+      const origin = `lineage:${parentId}:${result.direction}`;
 
       for (const entry of result.entries) {
         if (!nodes[entry.id]) {
@@ -94,33 +328,54 @@ export const useGraph = create<GraphState>((set) => ({
             era: entry.era,
             decade: entry.decade,
             generation: parent.generation + 1,
+            origins: [origin],
           };
           order.push(entry.id);
           spawnFrom[entry.id] = parentId;
+        } else {
+          nodes[entry.id] = {
+            ...nodes[entry.id],
+            origins: withOrigin(nodes[entry.id].origins, origin),
+          };
         }
-        // Influence flows from the earlier artist to the later one.
         const [from, to] =
           result.direction === "back" ? [entry.id, parentId] : [parentId, entry.id];
-        if (!hasEdge(edges, from, to)) {
-          edges.push({ id: `${from}-${to}`, from, to, kind: result.direction });
+        const existing = edges.find(
+          (edge) =>
+            edge.from === from &&
+            edge.to === to &&
+            relationshipOf(edge.kind) === "influence"
+        );
+        if (existing) {
+          existing.origins = withOrigin(existing.origins, origin);
+          if (!existing.reason) existing.reason = entry.reason;
+        } else {
+          edges.push({
+            id: `${from}-${to}-${result.direction}`,
+            from,
+            to,
+            kind: result.direction,
+            reason: entry.reason,
+            sources: [],
+            origins: [origin],
+          });
         }
       }
 
-      // Peer cross-links within the batch (undirected).
       for (const entry of result.entries) {
         for (const other of entry.linkedTo) {
-          if (!nodes[other] || entry.id === other) continue;
-          if (!hasEdge(edges, entry.id, other)) {
-            edges.push({
-              id: `${entry.id}-${other}-peer`,
-              from: entry.id,
-              to: other,
-              kind: "peer",
-            });
-          }
+          if (!nodes[other] || entry.id === other || hasEdge(edges, entry.id, other)) continue;
+          edges.push({
+            id: `${entry.id}-${other}-peer`,
+            from: entry.id,
+            to: other,
+            kind: "peer",
+            reason: "Strong musical ties within this lineage.",
+            sources: [],
+            origins: [origin],
+          });
         }
       }
-
       return {
         nodes,
         order,
@@ -128,45 +383,193 @@ export const useGraph = create<GraphState>((set) => ({
         spawnFrom,
         lastSource: result.source,
         expanded: {
-          ...s.expanded,
-          [parentId]: { ...s.expanded[parentId], [result.direction]: true },
+          ...state.expanded,
+          [parentId]: { ...state.expanded[parentId], [result.direction]: true },
         },
       };
     }),
 
-  removeNode: (id) =>
-    set((s) => {
-      if (!s.nodes[id]) return {};
-      const nodes = { ...s.nodes };
-      delete nodes[id];
-      const spawnFrom = { ...s.spawnFrom };
-      delete spawnFrom[id];
+  applyBridge: (result) => {
+    if (result.status !== "found" || !result.paths.length) return null;
+    const bridgeId = makeBridgeId();
+    const origin = `bridge:${bridgeId}`;
+    set((state) => {
+      const nodes = { ...state.nodes };
+      const order = [...state.order];
+      const edges = state.edges.map((edge) => ({ ...edge }));
+      const spawnFrom = { ...state.spawnFrom };
+      for (const entry of result.entries) {
+        const existing = nodes[entry.id];
+        if (existing) {
+          nodes[entry.id] = {
+            ...existing,
+            era: existing.era ?? entry.era,
+            decade: existing.decade ?? entry.decade,
+            origins: withOrigin(existing.origins, origin),
+          };
+        } else {
+          nodes[entry.id] = {
+            ...entry,
+            kind: "connector",
+            reason: null,
+            generation: 1,
+            origins: [origin],
+          };
+          order.push(entry.id);
+          spawnFrom[entry.id] = result.endpoints[0];
+        }
+      }
+
+      const edgeIdMap = new Map<string, string>();
+      for (const relationship of result.edges) {
+        const existing = edges.find(
+          (edge) =>
+            edge.from === relationship.from &&
+            edge.to === relationship.to &&
+            relationshipOf(edge.kind) === relationship.kind
+        );
+        if (existing) {
+          existing.origins = withOrigin(existing.origins, origin);
+          existing.reason ||= relationship.reason;
+          existing.sources = existing.sources?.length ? existing.sources : relationship.sources;
+          edgeIdMap.set(relationship.id, existing.id);
+        } else {
+          let id = relationship.id;
+          let suffix = 2;
+          while (edges.some((edge) => edge.id === id)) id = `${relationship.id}-${suffix++}`;
+          edges.push({ ...relationship, id, origins: [origin] });
+          edgeIdMap.set(relationship.id, id);
+        }
+      }
+      const paths = result.paths.map((path) => ({
+        ...path,
+        edgeIds: path.edgeIds
+          .map((id) => edgeIdMap.get(id))
+          .filter((id): id is string => Boolean(id)),
+      }));
+      const nodeIds = [...new Set(paths.flatMap((path) => path.nodeIds))];
+      const edgeIds = [...new Set(paths.flatMap((path) => path.edgeIds))];
+      const a = nodes[result.endpoints[0]]?.name ?? "Artist A";
+      const b = nodes[result.endpoints[1]]?.name ?? "Artist B";
+      const now = Date.now();
+      const bridge: ArtistBridge = {
+        id: bridgeId,
+        name: `${a} ↔ ${b}`,
+        endpointIds: result.endpoints,
+        mode: result.mode,
+        generationSource: result.generationSource,
+        degraded: result.degraded,
+        paths,
+        nodeIds,
+        edgeIds,
+        createdAt: now,
+        updatedAt: now,
+      };
       return {
         nodes,
-        order: s.order.filter((n) => n !== id),
-        edges: s.edges.filter((e) => e.from !== id && e.to !== id),
+        order,
+        edges,
         spawnFrom,
-        selectedId: s.selectedId === id ? null : s.selectedId,
+        bridges: { ...state.bridges, [bridgeId]: bridge },
+        bridgeOrder: [...state.bridgeOrder, bridgeId],
+        activeBridgeId: bridgeId,
+        lastSource: result.generationSource,
+      };
+    });
+    return bridgeId;
+  },
+
+  renameBridge: (id, rawName) =>
+    set((state) => {
+      const bridge = state.bridges[id];
+      const name = rawName.trim();
+      if (!bridge || !name) return {};
+      return {
+        bridges: {
+          ...state.bridges,
+          [id]: { ...bridge, name, updatedAt: Date.now() },
+        },
       };
     }),
 
-  select: (id) => set({ selectedId: id }),
-
-  reset: () =>
-    set({
-      nodes: {},
-      order: [],
-      edges: [],
-      spawnFrom: {},
-      expanded: {},
-      selectedId: null,
-      lastSource: null,
+  deleteBridge: (id) =>
+    set((state) => {
+      const data = deleteBridgeFromData(state, id);
+      const selectedIds = state.selectedIds.filter((nodeId) => data.nodes[nodeId]);
+      return {
+        ...data,
+        selectedIds,
+        selectedId:
+          data.selectedId !== null && selectedIds.includes(data.selectedId)
+            ? data.selectedId
+            : (selectedIds.at(-1) ?? null),
+      };
     }),
+  setActiveBridge: (activeBridgeId) => set({ activeBridgeId }),
+
+  removeNode: (id) => get().removeNodes([id]),
+  removeNodes: (ids) => {
+    let count = 0;
+    set((state) => {
+      const { data, removedIds } = removeNodesFromData(state, ids);
+      count = removedIds.size;
+      if (!count) return {};
+      const selectedIds = state.selectedIds.filter((id) => data.nodes[id]);
+      return {
+        ...data,
+        selectedIds,
+        selectedId:
+          data.selectedId !== null && selectedIds.includes(data.selectedId)
+            ? data.selectedId
+            : (selectedIds.at(-1) ?? null),
+      };
+    });
+    return count;
+  },
+
+  select: (id) => set({ selectedId: id, selectedIds: id === null ? [] : [id] }),
+  setSelection: (ids) =>
+    set((state) => {
+      const selectedIds = [...new Set(ids)].filter((id) => Boolean(state.nodes[id]));
+      return { selectedIds, selectedId: selectedIds.at(-1) ?? null };
+    }),
+  toggleSelection: (id) =>
+    set((state) => {
+      if (!state.nodes[id]) return {};
+      const selectedIds = state.selectedIds.includes(id)
+        ? state.selectedIds.filter((selectedId) => selectedId !== id)
+        : [...state.selectedIds, id];
+      return { selectedIds, selectedId: selectedIds.at(-1) ?? null };
+    }),
+  hydrate: (snapshot) => {
+    const graph = snapshot ?? emptyGraph();
+    set({
+      ...graph,
+      selectedIds: graph.selectedId === null ? [] : [graph.selectedId],
+      hydrated: true,
+    });
+  },
+  snapshot: () => {
+    const state = get();
+    return {
+      nodes: state.nodes,
+      order: state.order,
+      edges: state.edges,
+      spawnFrom: state.spawnFrom,
+      expanded: state.expanded,
+      selectedId: state.selectedId,
+      lastSource: state.lastSource,
+      bridges: state.bridges,
+      bridgeOrder: state.bridgeOrder,
+      activeBridgeId: state.activeBridgeId,
+    };
+  },
+  reset: () => set({ ...emptyGraph(), selectedIds: [] }),
 }));
 
-/** Orb pixel size by node role — seeds anchor the universe visually. */
 export function orbSize(node: GraphNode): number {
   if (node.kind === "seed") return 132;
+  if (node.kind === "connector") return node.generation <= 1 ? 88 : 72;
   if (node.generation <= 1) return 92;
   if (node.generation === 2) return 76;
   return 64;

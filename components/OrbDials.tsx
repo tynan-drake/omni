@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { DialRoot, useDialKit, type DialConfig, type ResolvedValues } from "dialkit";
 import "dialkit/styles.css";
 import { canvas } from "@/lib/canvas-controller";
-import { scatter, setPhysics } from "@/lib/simulation";
+import { scatter, setLabelLayout, setPhysics } from "@/lib/simulation";
 import { useOrbDials } from "@/store/orb-dials";
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -30,8 +30,8 @@ const CONFIG = {
     shadowY: [14, -40, 60],
     shadowBlur: [45, 0, 90],
     shadowOpacity: [0.33, 0, 1, 0.01],
-    rimWidth: [1.3, 0, 6, 0.1],
-    rimGlow: [38, 0, 60],
+    rimWidth: [0, 0, 6, 0.1],
+    rimGlow: [26, 0, 60],
     /** How much of the artist's accent colour the rim takes on. */
     rimTint: [28, 0, 100],
     saturation: [1.15, 0, 3, 0.05],
@@ -45,44 +45,81 @@ const CONFIG = {
    * and the shadow terminator in lockstep, so the orbs read as lit, not
    * decorated. 0° is straight above; negative is up-and-left. */
   light: {
-    angle: [-140, -180, 180],
-    shineDistance: [57, 0, 60],
-    shineStrength: [0.4, 0, 1, 0.01],
+    angle: [-100, -180, 180],
+    shineDistance: [31, 0, 60],
+    shineStrength: [0, 0, 1, 0.01],
     shineSpread: [100, 10, 100],
     limbDistance: [10, 0, 60],
     limbStart: [65, 0, 90],
     limbDepth: [0.66, 0, 1, 0.01],
   },
 
+  /* The bubble itself. `warp`, `frequency`, `detail` and `smooth` drive the
+   * SVG displacement filters (components/OrbFilters.tsx); the rest are CSS. */
+  glass: {
+    warp: [0, 0, 60],
+    frequency: [4, 1, 60],
+    detail: [2, 1, 4, 1],
+    smooth: [0.3, 0, 6, 0.1],
+    /** How far the filtered layer overhangs the sphere, so warps stay fed. */
+    bleed: [0, 0, 30],
+    photoZoom: [1, 1, 1.6, 0.01],
+    /** Soft focus + white veil: the photo reads as being behind the glass. */
+    photoBlur: [0, 0, 6, 0.1],
+    haze: [0.1, 0, 0.5, 0.01],
+    halo: [0, 0, 1, 0.01],
+    haloBlur: [0, 0, 60],
+    /** The inverted band near the rim: a real glass ball's squeezed view. */
+    edgeZoom: [3, 1, 3, 0.05],
+    edgeStart: [95, 0, 95],
+    edgeBlur: [0, 0, 20, 0.5],
+    edgeOpacity: [0.14, 0, 1, 0.01],
+    irisOpacity: [0.61, 0, 1, 0.01],
+    /** Keeps the iridescent film off the middle of the face. */
+    irisBias: [100, 0, 100],
+    irisSeconds: [27.5, 2, 90, 0.5],
+    fringeOpacity: [0, 0, 1, 0.01],
+    fringeWidth: [1, 1, 50],
+    fringeSeconds: [22.5, 2, 90, 0.5],
+    /** Tight specular dot at the light position. */
+    hotspot: [0, 0, 1, 0.01],
+    hotspotSize: [1, 1, 30, 0.5],
+    /** Counter-highlight opposite the light — light that crossed the bubble. */
+    sheen: [0, 0, 1, 0.01],
+    frost: [0, 0, 0.6, 0.01],
+    innerLight: [0, 0, 1, 0.01],
+    innerBlur: [0, 0, 50],
+  },
+
   atmosphere: {
     size: [0, 0, 140],
-    opacity: [0.3, 0, 1, 0.01],
+    opacity: [0, 0, 1, 0.01],
     blur: [28, 0, 60],
     /** Where the accent glow fades to nothing. Low = tight halo. */
     falloff: [75, 20, 100],
     /** Slow scale pulse — orbs feel alive rather than parked. */
-    breathe: [0.1, 0, 0.6, 0.01],
+    breathe: [0, 0, 0.6, 0.01],
     breatheGlow: [0, 0, 1.5, 0.05],
-    breatheSeconds: [4, 0.5, 20, 0.1],
+    breatheSeconds: [5, 0.5, 20, 0.1],
   },
 
   drift: {
-    lift: [6, 0, 40],
-    sway: [3, 0, 40],
-    tilt: [2, 0, 24],
-    seconds: [5.2, 1, 30, 0.1],
+    lift: [0, 0, 40],
+    sway: [0, 0, 40],
+    tilt: [0, 0, 24],
+    seconds: [5.5, 1, 30, 0.1],
     /** Spread of start times. 0 makes every orb bob in unison. */
     phaseSpread: [6, 0, 20, 0.1],
     /** Ties drift speed to orb size. Positive = big orbs move slower. */
-    parallax: [1.05, -1, 2, 0.05],
+    parallax: [2, -1, 2, 0.05],
   },
 
   physics: {
-    repulsion: [640, 0, 900],
+    repulsion: [460, 0, 900],
     /** Negative values let orbs overlap and clump. */
     collidePadding: [10, -30, 80],
     /** How hard a hovered orb shoves its neighbours aside. */
-    hoverPush: [30, 0, 140],
+    hoverPush: [0, 0, 140],
     linkDistance: [190, 40, 500],
     peerDistance: [310, 40, 500],
     linkStrength: [0.19, 0, 1, 0.01],
@@ -98,36 +135,36 @@ const CONFIG = {
   },
 
   interaction: {
-    hoverScale: [1.14, 1, 1.8, 0.01],
-    hoverLift: [4, 0, 30],
-    hoverAtmosphere: [0.96, 0, 1, 0.01],
-    hoverAtmosphereScale: [1.33, 1, 2, 0.01],
-    selectedAtmosphere: [1, 0, 1, 0.01],
-    selectedAtmosphereScale: [1.15, 1, 2, 0.01],
-    selectedRimWidth: [1.5, 0, 8, 0.1],
+    hoverScale: [1, 1, 1.8, 0.01],
+    hoverLift: [0, 0, 30],
+    hoverAtmosphere: [0.18, 0, 1, 0.01],
+    hoverAtmosphereScale: [1.22, 1, 2, 0.01],
+    selectedAtmosphere: [0.39, 0, 1, 0.01],
+    selectedAtmosphereScale: [1.48, 1, 2, 0.01],
+    selectedRimWidth: [0.4, 0, 8, 0.1],
     /** Opacity + saturation of orbs filtered out of view. */
-    dimOpacity: [0.34, 0, 1, 0.01],
+    dimOpacity: [0.23, 0, 1, 0.01],
     dimSaturation: [0.25, 0, 1, 0.01],
     responseMs: [700, 0, 1200, 10],
     entrance: { type: "spring", visualDuration: 0.45, bounce: 0.35 },
   },
 
   edges: {
-    opacity: [0.28, 0, 1, 0.01],
-    width: [1.4, 0, 6, 0.1],
-    flowOpacity: [0.75, 0, 1, 0.01],
-    flowWidth: [1.7, 0, 6, 0.1],
-    dash: [3, 0, 30, 0.5],
-    gap: [11, 0, 40, 0.5],
-    flowSeconds: [1.9, 0.2, 12, 0.1],
-    peerDash: [2, 0, 30, 0.5],
-    peerGap: [7, 0, 40, 0.5],
+    opacity: [0, 0, 1, 0.01],
+    width: [0, 0, 6, 0.1],
+    flowOpacity: [0.56, 0, 1, 0.01],
+    flowWidth: [3.1, 0, 6, 0.1],
+    dash: [0, 0, 30, 0.5],
+    gap: [5, 0, 40, 0.5],
+    flowSeconds: [1.6, 0.2, 12, 0.1],
+    peerDash: [5, 0, 30, 0.5],
+    peerGap: [5.5, 0, 40, 0.5],
     peerOpacity: [0.34, 0, 1, 0.01],
-    dimOpacity: [0.1, 0, 1, 0.01],
+    dimOpacity: [0.23, 0, 1, 0.01],
   },
 
   label: {
-    offset: [0, -40, 80],
+    offset: [10, -40, 80],
     opacity: [1, 0, 1, 0.01],
     nameSize: [12, 6, 30, 0.5],
     eraSize: [9, 6, 24, 0.5],
@@ -180,6 +217,29 @@ function applyLook(p: OrbDialValues): void {
     "--orb-limb-y": limbY,
     "--orb-limb-start": `${p.light.limbStart}%`,
     "--orb-limb-depth": `${p.light.limbDepth}`,
+
+    "--glass-bleed": `${p.glass.bleed}%`,
+    "--glass-photo-zoom": `${p.glass.photoZoom}`,
+    "--glass-blur": `${p.glass.photoBlur}px`,
+    "--glass-haze": `${p.glass.haze}`,
+    "--glass-halo": `${p.glass.halo}`,
+    "--glass-halo-blur": `${p.glass.haloBlur}px`,
+    "--glass-edge-zoom": `${p.glass.edgeZoom}`,
+    "--glass-edge-start": `${p.glass.edgeStart}%`,
+    "--glass-edge-blur": `${p.glass.edgeBlur}px`,
+    "--glass-edge-opacity": `${p.glass.edgeOpacity}`,
+    "--glass-iris-opacity": `${p.glass.irisOpacity}`,
+    "--glass-iris-bias": `${p.glass.irisBias}%`,
+    "--glass-iris-dur": `${p.glass.irisSeconds}s`,
+    "--glass-fringe-opacity": `${p.glass.fringeOpacity}`,
+    "--glass-fringe-width": `${p.glass.fringeWidth}%`,
+    "--glass-fringe-dur": `${p.glass.fringeSeconds}s`,
+    "--glass-hotspot": `${p.glass.hotspot}`,
+    "--glass-hotspot-size": `${p.glass.hotspotSize}%`,
+    "--glass-sheen": `${p.glass.sheen}`,
+    "--glass-frost": `${p.glass.frost}`,
+    "--glass-inner-light": `${p.glass.innerLight}`,
+    "--glass-inner-blur": `${p.glass.innerBlur}px`,
 
     "--orb-atmo-inset": `${-p.atmosphere.size}%`,
     "--orb-atmo-opacity": `${p.atmosphere.opacity}`,
@@ -240,9 +300,18 @@ export default function OrbDials() {
   useEffect(() => {
     applyLook(params);
     setPhysics(params.physics);
+    setLabelLayout(params.label);
 
-    const { setSizeScale, setEntrance } = useOrbDials.getState();
+    const { setSizeScale, setEntrance, setGlass } = useOrbDials.getState();
     setSizeScale(params.form.size);
+    // The frequency dial is in thousandths — a 1-60 slider is easier to aim
+    // than one that lives between 0.001 and 0.06.
+    setGlass({
+      warp: params.glass.warp,
+      frequency: params.glass.frequency / 1000,
+      detail: params.glass.detail,
+      smooth: params.glass.smooth,
+    });
     // The transition control can only produce a spring for a spring config,
     // but the resolved type is the wider union — narrow before storing.
     if (params.interaction.entrance.type === "spring") {

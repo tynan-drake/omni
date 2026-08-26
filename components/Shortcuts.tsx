@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { canvas } from "@/lib/canvas-controller";
-import { expand } from "@/store/actions";
+import { expand, removeArtists } from "@/store/actions";
 import { useAudio } from "@/store/audio";
 import { useGraph } from "@/store/graph";
 import { useUi } from "@/store/ui";
@@ -38,6 +38,13 @@ export default function Shortcuts() {
 
       if (isTyping(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
 
+      if (
+        (ui.paletteOpen || ui.playlistOpen || ui.shortcutsOpen || ui.detailFor !== null) &&
+        (e.key === "Delete" || e.key === "Backspace")
+      ) {
+        return;
+      }
+
       switch (e.key) {
         case "/": {
           e.preventDefault();
@@ -63,6 +70,15 @@ export default function Shortcuts() {
         case "_":
           canvas.zoomBy(1 / 1.35);
           break;
+        case "Delete":
+        case "Backspace": {
+          const ids = useGraph.getState().selectedIds;
+          if (ids.length) {
+            e.preventDefault();
+            removeArtists(ids);
+          }
+          break;
+        }
         case " ": {
           if (useAudio.getState().track) {
             e.preventDefault();
@@ -72,14 +88,18 @@ export default function Shortcuts() {
         }
         case "r":
         case "R": {
-          const id = useGraph.getState().selectedId;
-          if (id !== null) void expand(id, "back");
+          const graph = useGraph.getState();
+          if (graph.selectedIds.length === 1 && graph.selectedId !== null) {
+            void expand(graph.selectedId, "back");
+          }
           break;
         }
         case "b":
         case "B": {
-          const id = useGraph.getState().selectedId;
-          if (id !== null) void expand(id, "forward");
+          const graph = useGraph.getState();
+          if (graph.selectedIds.length === 1 && graph.selectedId !== null) {
+            void expand(graph.selectedId, "forward");
+          }
           break;
         }
         case "p":

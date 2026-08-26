@@ -97,6 +97,12 @@ export async function getTopTracks(id: number, limit = 5): Promise<Track[]> {
   return (json.data ?? []).filter((t) => t.preview).map(toTrack);
 }
 
+/** Fetch a short-lived preview URL immediately before playback. */
+export async function getTrackPreview(id: number): Promise<string | null> {
+  const track = await dz<DeezerTrack>(`/track/${id}`, 0);
+  return track.preview || null;
+}
+
 export async function getAlbums(id: number): Promise<DeezerAlbum[]> {
   const json = await dz<DeezerList<DeezerAlbum>>(`/artist/${id}/albums?limit=100`);
   return json.data ?? [];

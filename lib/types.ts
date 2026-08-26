@@ -1,6 +1,20 @@
 export type Direction = "back" | "forward";
-export type NodeKind = "seed" | "root" | "branch";
+export type NodeKind = "seed" | "root" | "branch" | "connector";
 export type LineageSource = "curated" | "similarity";
+export type BridgeMode = "influence" | "adjacent";
+export type BridgeGenerationSource = "curated" | "similarity";
+export type RelationshipKind =
+  | "influence"
+  | "peer"
+  | "collaboration"
+  | "sample"
+  | "scene"
+  | "similarity";
+
+export interface EvidenceSource {
+  title: string;
+  url: string;
+}
 
 export interface ArtistRef {
   id: number;
@@ -60,9 +74,12 @@ export interface GraphNode {
   era: string | null;
   decade: number | null;
   generation: number;
+  /** JSON-safe ownership markers such as seed, explored, or bridge:<id>. */
+  origins: string[];
 }
 
-export type EdgeKind = "back" | "forward" | "peer";
+/** Back/forward remain for existing lineage expansions; both mean influence. */
+export type EdgeKind = Direction | RelationshipKind;
 
 export interface GraphEdge {
   id: string;
@@ -71,4 +88,56 @@ export interface GraphEdge {
   /** node id of the influenced (later artist) */
   to: number;
   kind: EdgeKind;
+  reason: string | null;
+  sources: EvidenceSource[];
+  origins: string[];
+}
+
+export interface BridgeArtist extends ArtistRef {
+  accent: string;
+  era: string | null;
+  decade: number | null;
+}
+
+export interface BridgeRelationship {
+  id: string;
+  from: number;
+  to: number;
+  kind: Exclude<RelationshipKind, "peer">;
+  reason: string;
+  sources: EvidenceSource[];
+}
+
+export interface BridgePath {
+  id: string;
+  shape: "chain" | "shared-root";
+  nodeIds: number[];
+  edgeIds: string[];
+  commonRootId?: number;
+}
+
+export interface BridgeResult {
+  status: "found" | "no_path";
+  mode: BridgeMode;
+  generationSource: BridgeGenerationSource;
+  degraded: boolean;
+  endpoints: [number, number];
+  entries: BridgeArtist[];
+  edges: BridgeRelationship[];
+  paths: BridgePath[];
+  message?: string;
+}
+
+export interface ArtistBridge {
+  id: string;
+  name: string;
+  endpointIds: [number, number];
+  mode: BridgeMode;
+  generationSource: BridgeGenerationSource;
+  degraded: boolean;
+  paths: BridgePath[];
+  nodeIds: number[];
+  edgeIds: string[];
+  createdAt: number;
+  updatedAt: number;
 }

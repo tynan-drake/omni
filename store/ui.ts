@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { Direction, NodeKind } from "@/lib/types";
+import type { ArtistRef, BridgeMode, Direction, NodeKind } from "@/lib/types";
 
 export interface FilterState {
   /** node kinds to show; empty set = show all */
@@ -11,7 +11,32 @@ export interface FilterState {
 }
 
 /** Flyout panels hung off the left nav rail; only one is open at a time. */
-export type NavPanel = "search" | "recent";
+export type NavPanel = "search" | "recent" | "bridges";
+export type CanvasTool = "pan" | "select";
+
+export interface CanvasContextMenuState {
+  x: number;
+  y: number;
+  nodeIds: number[];
+  target: "artists" | "canvas";
+}
+
+export interface BridgeRequestState {
+  fromId: number;
+  target: ArtistRef;
+  mode: BridgeMode;
+  status: "loading" | "no_path" | "error";
+  message: string;
+}
+
+export interface SplitFormationState {
+  id: number;
+  startedAt: number;
+  parentId: number;
+  direction: Direction;
+  childIds: number[];
+  stage: number;
+}
 
 interface UiState {
   /** node id whose action menu is open */
@@ -22,11 +47,19 @@ interface UiState {
   detailFor: number | null;
   paletteOpen: boolean;
   playlistOpen: boolean;
+  /** null means the whole canvas; otherwise a frozen selected-artist scope. */
+  playlistArtistIds: number[] | null;
   shortcutsOpen: boolean;
+  canvasTool: CanvasTool;
+  canvasContextMenu: CanvasContextMenuState | null;
   /** node id + direction currently loading a lineage expansion */
   expanding: Record<string, boolean>;
   filter: FilterState;
   toast: string | null;
+  connectingFrom: number | null;
+  bridgeRequest: BridgeRequestState | null;
+  /** Ephemeral hero animation that joins a lineage parent to its new children. */
+  splitFormation: SplitFormationState | null;
 
   openMenu: (id: number | null) => void;
   setNavPanel: (panel: NavPanel | null) => void;
@@ -34,16 +67,30 @@ interface UiState {
   openDetail: (id: number | null) => void;
   setPaletteOpen: (open: boolean) => void;
   setPlaylistOpen: (open: boolean) => void;
+  openPlaylistFor: (ids: number[]) => void;
   setShortcutsOpen: (open: boolean) => void;
+  setCanvasTool: (tool: CanvasTool) => void;
+  openCanvasContextMenu: (menu: CanvasContextMenuState | null) => void;
   setExpanding: (id: number, direction: Direction, loading: boolean) => void;
   toggleKindFilter: (kind: NodeKind) => void;
   toggleDecadeFilter: (decade: number) => void;
   clearFilters: () => void;
   showToast: (message: string) => void;
   closeAll: () => void;
+  startConnecting: (id: number) => void;
+  cancelConnecting: () => void;
+  setBridgeRequest: (request: BridgeRequestState | null) => void;
+  beginSplitFormation: (
+    parentId: number,
+    direction: Direction,
+    childIds: number[]
+  ) => number;
+  setSplitFormationStage: (id: number, stage: number) => void;
+  finishSplitFormation: (id: number) => void;
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
+let splitId = 0;
 
 export const useUi = create<UiState>((set) => ({
   menuFor: null,
@@ -51,21 +98,45 @@ export const useUi = create<UiState>((set) => ({
   detailFor: null,
   paletteOpen: false,
   playlistOpen: false,
+  playlistArtistIds: null,
   shortcutsOpen: false,
+  canvasTool: "pan",
+  canvasContextMenu: null,
   expanding: {},
   filter: { kinds: new Set(), decades: new Set() },
   toast: null,
+  connectingFrom: null,
+  bridgeRequest: null,
+  splitFormation: null,
 
-  openMenu: (id) => set({ menuFor: id }),
+  openMenu: (id) => set({ menuFor: id, ...(id !== null && { canvasContextMenu: null }) }),
   setNavPanel: (panel) => set({ navPanel: panel }),
   toggleNavPanel: (panel) =>
     set((s) => ({ navPanel: s.navPanel === panel ? null : panel })),
   openDetail: (id) =>
-    set({ detailFor: id, menuFor: null, ...(id !== null && { playlistOpen: false }) }),
+    set({
+      detailFor: id,
+      menuFor: null,
+      ...(id !== null && { playlistOpen: false, playlistArtistIds: null }),
+    }),
   setPaletteOpen: (open) => set({ paletteOpen: open }),
   setPlaylistOpen: (open) =>
-    set({ playlistOpen: open, ...(open && { detailFor: null }) }),
+    set({
+      playlistOpen: open,
+      playlistArtistIds: null,
+      ...(open && { detailFor: null, canvasContextMenu: null }),
+    }),
+  openPlaylistFor: (ids) =>
+    set({
+      playlistOpen: true,
+      playlistArtistIds: [...new Set(ids)],
+      detailFor: null,
+      canvasContextMenu: null,
+    }),
   setShortcutsOpen: (open) => set({ shortcutsOpen: open }),
+  setCanvasTool: (canvasTool) => set({ canvasTool, canvasContextMenu: null }),
+  openCanvasContextMenu: (canvasContextMenu) =>
+    set({ canvasContextMenu, ...(canvasContextMenu && { menuFor: null }) }),
 
   setExpanding: (id, direction, loading) =>
     set((s) => ({
@@ -103,8 +174,48 @@ export const useUi = create<UiState>((set) => ({
       detailFor: null,
       paletteOpen: false,
       playlistOpen: false,
+      playlistArtistIds: null,
       shortcutsOpen: false,
+      canvasContextMenu: null,
+      connectingFrom: null,
+      bridgeRequest: null,
     }),
+
+  startConnecting: (id) =>
+    set({
+      connectingFrom: id,
+      navPanel: "bridges",
+      menuFor: null,
+      detailFor: null,
+      canvasContextMenu: null,
+      bridgeRequest: null,
+    }),
+  cancelConnecting: () => set({ connectingFrom: null, bridgeRequest: null }),
+  setBridgeRequest: (bridgeRequest) => set({ bridgeRequest }),
+  beginSplitFormation: (parentId, direction, childIds) => {
+    const id = ++splitId;
+    set({
+      splitFormation: {
+        id,
+        startedAt: performance.now(),
+        parentId,
+        direction,
+        childIds: [...childIds],
+        stage: 1,
+      },
+    });
+    return id;
+  },
+  setSplitFormationStage: (id, stage) =>
+    set((state) =>
+      state.splitFormation?.id === id
+        ? { splitFormation: { ...state.splitFormation, stage } }
+        : {}
+    ),
+  finishSplitFormation: (id) =>
+    set((state) =>
+      state.splitFormation?.id === id ? { splitFormation: null } : {}
+    ),
 }));
 
 /** Does a node pass the active filters? */
