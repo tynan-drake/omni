@@ -81,6 +81,9 @@ export default function Canvas() {
     () => ({
       root: edges.some((edge) => edge.kind === "back"),
       branch: edges.some((edge) => edge.kind === "forward"),
+      bridge: edges.some((edge) =>
+        edge.origins?.some((origin) => origin.startsWith("bridge:"))
+      ),
     }),
     [edges]
   );
@@ -533,7 +536,7 @@ export default function Canvas() {
           <EdgeLayer />
         </g>
       </svg>
-      {(lineageRoles.root || lineageRoles.branch) && (
+      {(lineageRoles.root || lineageRoles.branch || lineageRoles.bridge) && (
         <aside className="edge-legend glass" aria-label="Connection line legend">
           {lineageRoles.root && (
             <span className="edge-legend-item is-root">
@@ -551,6 +554,15 @@ export default function Canvas() {
                 <line className="edge-legend-branch-buds" x1="1" y1="4" x2="27" y2="4" />
               </svg>
               Branches
+            </span>
+          )}
+          {lineageRoles.bridge && (
+            <span className="edge-legend-item is-bridge">
+              <svg viewBox="0 0 28 8" aria-hidden="true">
+                <line className="edge-legend-bridge-rail" x1="1" y1="4" x2="27" y2="4" />
+                <line className="edge-legend-bridge-signal" x1="1" y1="4" x2="27" y2="4" />
+              </svg>
+              Bridges
             </span>
           )}
         </aside>

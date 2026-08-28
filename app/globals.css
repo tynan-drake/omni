@@ -13,6 +13,7 @@
    * root and branch connections carry equal visual weight on the dark field. */
   --lineage-root-color: #d8a657;
   --lineage-branch-color: #6eb7f7;
+  --bridge-edge-color: #b99cff;
 
   /* left nav rail: flush to the screen edge, its own width, and the left edge
    * everything else starts at. Keep --rail-gutter in sync with
@@ -140,6 +141,16 @@
   --edge-peer-gap: 7;
   --edge-peer-opacity: 0.34;
   --edge-dim-opacity: 0.1;
+
+  /* Bridge grammar: a quiet continuous rail with longer traveling signals.
+   * This stays consistent across influence, collaboration, and similarity. */
+  --edge-bridge-rail-opacity: 0.3;
+  --edge-bridge-rail-width: 3.2;
+  --edge-bridge-signal-opacity: 0.9;
+  --edge-bridge-signal-width: 1.65;
+  --edge-bridge-signal: 8;
+  --edge-bridge-gap: 6;
+  --edge-bridge-dur: 2.45s;
 
   /* Lineage grammar. Roots are a grounded, continuous double strand;
    * branches are a lighter trail of outward-moving buds. Shape carries the
@@ -314,6 +325,24 @@ body {
   stroke-opacity: var(--edge-peer-opacity);
 }
 
+/* Bridge maps use one persistent signal-line treatment, regardless of the
+ * underlying relationship type. Roots remain double-stranded and branches
+ * remain dotted, so the three connection families also differ by shape. */
+.edge-bridge .edge-base {
+  stroke-opacity: var(--edge-bridge-rail-opacity);
+  stroke-width: var(--edge-bridge-rail-width);
+  stroke-dasharray: none;
+  stroke-linecap: round;
+}
+
+.edge-bridge .edge-flow {
+  stroke-opacity: var(--edge-bridge-signal-opacity);
+  stroke-width: var(--edge-bridge-signal-width);
+  stroke-dasharray: var(--edge-bridge-signal) var(--edge-bridge-gap);
+  stroke-linecap: round;
+  animation: edge-bridge-flow var(--edge-bridge-dur) linear infinite;
+}
+
 .edge.is-dimmed {
   opacity: var(--edge-dim-opacity);
 }
@@ -328,6 +357,14 @@ body {
   to {
     stroke-dashoffset: calc(
       (var(--edge-branch-bud) + var(--edge-branch-gap)) * -1
+    );
+  }
+}
+
+@keyframes edge-bridge-flow {
+  to {
+    stroke-dashoffset: calc(
+      (var(--edge-bridge-signal) + var(--edge-bridge-gap)) * -1
     );
   }
 }
@@ -362,6 +399,10 @@ body {
 
 .edge-legend-item.is-branch {
   color: color-mix(in srgb, var(--lineage-branch-color) 72%, var(--ink-dim));
+}
+
+.edge-legend-item.is-bridge {
+  color: color-mix(in srgb, var(--bridge-edge-color) 82%, var(--ink-dim));
 }
 
 .edge-legend-item svg {
@@ -403,6 +444,23 @@ body {
   stroke-opacity: var(--edge-branch-opacity);
   stroke-dasharray: var(--edge-branch-bud) var(--edge-branch-gap);
   stroke-linecap: round;
+}
+
+.edge-legend-bridge-rail,
+.edge-legend-bridge-signal {
+  stroke: var(--bridge-edge-color);
+  stroke-linecap: round;
+}
+
+.edge-legend-bridge-rail {
+  stroke-width: var(--edge-bridge-rail-width);
+  stroke-opacity: var(--edge-bridge-rail-opacity);
+}
+
+.edge-legend-bridge-signal {
+  stroke-width: var(--edge-bridge-signal-width);
+  stroke-opacity: var(--edge-bridge-signal-opacity);
+  stroke-dasharray: var(--edge-bridge-signal) var(--edge-bridge-gap);
 }
 
 /* ------------------------------------------------------------------ orbs */
@@ -2316,12 +2374,21 @@ button.bridge-row {
 }
 
 .edge.is-bridge-edge .edge-base {
-  stroke-opacity: 0.68;
-  stroke-width: calc(var(--edge-width) + 0.7px);
+  stroke-opacity: 0.58;
+  stroke-width: calc(var(--edge-bridge-rail-width) + 0.5);
+}
+
+.edge.is-bridge-edge .edge-flow {
+  stroke-opacity: 1;
+  stroke-width: calc(var(--edge-bridge-signal-width) + 0.35);
 }
 
 .edge-adjacent .edge-base {
   stroke-dasharray: 3 7;
+}
+
+.edge-bridge.edge-adjacent .edge-base {
+  stroke-dasharray: none;
 }
 
 @media (max-width: 520px) {

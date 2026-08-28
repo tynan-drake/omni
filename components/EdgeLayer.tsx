@@ -31,12 +31,15 @@ function EdgeLayerImpl() {
             : edge.kind === "forward"
               ? "branch"
               : null;
+        const bridgeOwned = edge.origins?.some((origin) => origin.startsWith("bridge:"));
         const color =
-          lineageRole === "root"
-            ? "var(--lineage-root-color)"
-            : lineageRole === "branch"
-              ? "var(--lineage-branch-color)"
-              : mixHex(from.accent, to.accent);
+          bridgeOwned
+            ? "var(--bridge-edge-color)"
+            : lineageRole === "root"
+              ? "var(--lineage-root-color)"
+              : lineageRole === "branch"
+                ? "var(--lineage-branch-color)"
+                : mixHex(from.accent, to.accent);
         const inBridge = Boolean(activeBridge && activeEdgeIds.has(edge.id));
         const dimmed =
           !nodeMatchesFilter(filter, from) ||
@@ -50,6 +53,7 @@ function EdgeLayerImpl() {
               "edge",
               edge.kind === "peer" ? "edge-peer" : "edge-directional",
               lineageRole ? `edge-${lineageRole}` : "",
+              bridgeOwned ? "edge-bridge" : "",
               dimmed ? "is-dimmed" : "",
               inBridge ? "is-bridge-edge" : "",
               edge.kind === "similarity" || edge.kind === "scene"
@@ -61,9 +65,11 @@ function EdgeLayerImpl() {
             data-lineage-role={lineageRole ?? undefined}
             style={{ color }}
           >
-            {lineageRole && (
+            {bridgeOwned ? (
+              <title>{`Bridge connection: ${from.name} to ${to.name}`}</title>
+            ) : lineageRole ? (
               <title>{`${lineageRole === "root" ? "Root" : "Branch"} connection: ${from.name} to ${to.name}`}</title>
-            )}
+            ) : null}
             <line className="edge-base" />
             {edge.kind !== "peer" && <line className="edge-flow" />}
           </g>

@@ -37,6 +37,9 @@ export interface ArtistDetails extends ArtistRef {
   fans: number;
   startYear: number | null;
   tracks: Track[];
+  bio: string | null;
+  bioUrl: string | null;
+  bioSource: "Wikipedia" | null;
 }
 
 export interface LineageEntry extends ArtistRef {

@@ -26,24 +26,6 @@ function serviceLogo(name: string) {
 const fmtFans = (fans: number) =>
   Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(fans);
 
-function artistBio(name: string, era: string | undefined, details: ArtistDetails | null) {
-  if (!details) {
-    return era
-      ? `${name} is part of the ${era} era in this music map.`
-      : `More artist information will appear here when it becomes available.`;
-  }
-
-  const career = details.startYear
-    ? `, with releases dating from ${details.startYear}`
-    : "";
-  const highlights = details.tracks.slice(0, 2).map((track) => track.title);
-  const topTracks = highlights.length
-    ? ` Top tracks include ${highlights.join(" and ")}.`
-    : "";
-
-  return `${name} has ${fmtFans(details.fans)} fans on Deezer${career}.${topTracks}`;
-}
-
 export default function DetailPanel({ nodeId }: { nodeId: number }) {
   const node = useGraph((s) => s.nodes[nodeId]);
   const [details, setDetails] = useState<ArtistDetails | null>(null);
@@ -95,12 +77,32 @@ export default function DetailPanel({ nodeId }: { nodeId: number }) {
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col">
-          {node.reason && <p className="detail-reason">{node.reason}</p>}
-
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar-slim">
           <div className="detail-section detail-bio">
             <h3>About</h3>
-            <p>{artistBio(node.name, node.era ?? undefined, details)}</p>
+            {!details && !failed && <div className="detail-loading" />}
+            {details?.bio ? (
+              <>
+                <p>{details.bio}</p>
+                {details.bioUrl && details.bioSource && (
+                  <a
+                    href={details.bioUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-flex items-center gap-1 text-xs text-white/50 transition-colors hover:text-white/80"
+                  >
+                    {details.bioSource} <ExternalIcon size={10} />
+                  </a>
+                )}
+              </>
+            ) : (
+              details && (
+                <p>
+                  An editorial biography for {node.name} isn&apos;t available yet.
+                </p>
+              )
+            )}
+            {failed && <p>Couldn&apos;t load this artist&apos;s biography.</p>}
           </div>
         </div>
       </div>

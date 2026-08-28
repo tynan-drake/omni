@@ -28,7 +28,7 @@ export const useArtistCache = create<ArtistCacheState>((set) => ({
 
 const inFlight = new Map<number, Promise<ArtistDetails | null>>();
 
-/** Fetch full artist details (tracks, accent, startYear) with client caching. */
+/** Fetch full artist details (tracks, biography, accent, startYear) with client caching. */
 export async function fetchDetails(id: number): Promise<ArtistDetails | null> {
   const cached = useArtistCache.getState().details[id];
   if (cached) return cached;
