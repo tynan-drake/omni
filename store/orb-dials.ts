@@ -35,6 +35,17 @@ export interface GlassWarp {
   smooth: number;
 }
 
+export type MitosisRenderer = "shader" | "liquid-gooey";
+
+export interface GooeyMitosisTuning {
+  blur: number;
+  contrast: number;
+  waviness: number;
+  dissolve: number;
+  speed: number;
+  bounce: number;
+}
+
 interface OrbDialState {
   /** Multiplier on every orb's pixel size — and on its collision radius. */
   sizeScale: number;
@@ -44,10 +55,14 @@ interface OrbDialState {
   epoch: number;
   /** Shape of the refraction inside the glass. */
   glass: GlassWarp;
+  mitosisRenderer: MitosisRenderer;
+  gooeyMitosis: GooeyMitosisTuning;
 
   setSizeScale: (scale: number) => void;
   setEntrance: (spring: OrbSpring) => void;
   setGlass: (glass: GlassWarp) => void;
+  setMitosisRenderer: (renderer: MitosisRenderer) => void;
+  setGooeyMitosis: (tuning: GooeyMitosisTuning) => void;
   replay: () => void;
 }
 
@@ -62,11 +77,22 @@ export const useOrbDials = create<OrbDialState>((set) => ({
   entrance: { type: "spring", visualDuration: 0.45, bounce: 0.35 },
   epoch: 0,
   glass: { warp: 13, frequency: 0.013, detail: 2, smooth: 1.1 },
+  mitosisRenderer: "shader",
+  gooeyMitosis: {
+    blur: 14,
+    contrast: 22,
+    waviness: 3,
+    dissolve: 0.8,
+    speed: 1.45,
+    bounce: 0.42,
+  },
 
   setSizeScale: (sizeScale) => set({ sizeScale }),
   setEntrance: (entrance) => set({ entrance }),
   // Re-rasterising six turbulence fields is the expensive part of the panel,
   // so only publish a genuinely new set of values.
   setGlass: (glass) => set((s) => (sameGlass(s.glass, glass) ? s : { glass })),
+  setMitosisRenderer: (mitosisRenderer) => set({ mitosisRenderer }),
+  setGooeyMitosis: (gooeyMitosis) => set({ gooeyMitosis }),
   replay: () => set((s) => ({ epoch: s.epoch + 1 })),
 }));

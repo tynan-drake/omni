@@ -35,6 +35,7 @@ import { nodeMatchesFilter, useUi } from "@/store/ui";
 import { Orb } from "./Orb";
 import { EdgeLayer } from "./EdgeLayer";
 import MitosisSurface from "./MitosisSurface";
+import GooeyMitosisSurface from "./GooeyMitosisSurface";
 
 export default function Canvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -69,6 +70,7 @@ export default function Canvas() {
   const splitFormation = useUi((s) => s.splitFormation);
   const sizeScale = useOrbDials((s) => s.sizeScale);
   const epoch = useOrbDials((s) => s.epoch);
+  const mitosisRenderer = useOrbDials((s) => s.mitosisRenderer);
   const activeNodeIds = useMemo(
     () => new Set(activeBridge?.nodeIds ?? []),
     [activeBridge]
@@ -605,12 +607,21 @@ export default function Canvas() {
         })}
       </div>
       {splitFormation && nodes[splitFormation.parentId] && (
-        <MitosisSurface
-          key={splitFormation.id}
-          formation={splitFormation}
-          parent={nodes[splitFormation.parentId]}
-          buds={mitosisChildren}
-        />
+        mitosisRenderer === "liquid-gooey" ? (
+          <GooeyMitosisSurface
+            key={`gooey-${splitFormation.id}`}
+            formation={splitFormation}
+            parent={nodes[splitFormation.parentId]}
+            buds={mitosisChildren}
+          />
+        ) : (
+          <MitosisSurface
+            key={splitFormation.id}
+            formation={splitFormation}
+            parent={nodes[splitFormation.parentId]}
+            buds={mitosisChildren}
+          />
+        )
       )}
       {marquee && (
         <div

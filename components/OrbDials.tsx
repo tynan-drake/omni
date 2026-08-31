@@ -149,6 +149,23 @@ const CONFIG = {
     entrance: { type: "spring", visualDuration: 0.45, bounce: 0.35 },
   },
 
+  mitosis: {
+    renderer: {
+      type: "select",
+      options: [
+        { value: "shader", label: "WebGL surface" },
+        { value: "liquid-gooey", label: "Liquid Gooey" },
+      ],
+      default: "shader",
+    },
+    blur: [14, 4, 30, 1],
+    contrast: [22, 8, 50, 1],
+    waviness: [3, 0, 12, 0.5],
+    dissolve: [0.8, 0, 1, 0.05],
+    speed: [1.45, 0.5, 3, 0.05],
+    bounce: [0.42, 0, 1, 0.05],
+  },
+
   edges: {
     opacity: [0, 0, 1, 0.01],
     width: [0, 0, 6, 0.1],
@@ -302,7 +319,13 @@ export default function OrbDials() {
     setPhysics(params.physics);
     setLabelLayout(params.label);
 
-    const { setSizeScale, setEntrance, setGlass } = useOrbDials.getState();
+    const {
+      setSizeScale,
+      setEntrance,
+      setGlass,
+      setMitosisRenderer,
+      setGooeyMitosis,
+    } = useOrbDials.getState();
     setSizeScale(params.form.size);
     // The frequency dial is in thousandths — a 1-60 slider is easier to aim
     // than one that lives between 0.001 and 0.06.
@@ -311,6 +334,17 @@ export default function OrbDials() {
       frequency: params.glass.frequency / 1000,
       detail: params.glass.detail,
       smooth: params.glass.smooth,
+    });
+    setMitosisRenderer(
+      params.mitosis.renderer === "liquid-gooey" ? "liquid-gooey" : "shader"
+    );
+    setGooeyMitosis({
+      blur: params.mitosis.blur,
+      contrast: params.mitosis.contrast,
+      waviness: params.mitosis.waviness,
+      dissolve: params.mitosis.dissolve,
+      speed: params.mitosis.speed,
+      bounce: params.mitosis.bounce,
     });
     // The transition control can only produce a spring for a spring config,
     // but the resolved type is the wider union — narrow before storing.
