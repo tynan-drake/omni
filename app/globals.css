@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --bg-deep: #070a14;
-  --bg-mid: #0d1224;
+  --bg-deep: #000;
+  --bg-mid: #000;
   --ink: #e8eaf2;
   --ink-dim: #8b91a5;
   --brand: #8b7cf6;
@@ -191,10 +191,7 @@ body {
   inset: 0;
   overflow: hidden;
   cursor: default;
-  background:
-    radial-gradient(1200px 800px at 75% 12%, rgba(120, 90, 240, 0.1), transparent 60%),
-    radial-gradient(1000px 700px at 18% 85%, rgba(40, 140, 220, 0.08), transparent 55%),
-    radial-gradient(1400px 1000px at 50% 45%, var(--bg-mid) 0%, var(--bg-deep) 100%);
+  background: #000;
 }
 
 .canvas-root.is-pan-tool {
@@ -1466,9 +1463,7 @@ body {
   margin-top: -6vh;
 }
 
-/* The fill is a gradient wider than the text, panned back and forth (flow)
- * while the whole thing drifts in hue and breathes its glow (shimmer).
- * Every variable below is tunable live — see components/WordmarkDials.tsx. */
+/* Keep the landing wordmark crisp and legible on the black canvas. */
 .landing-wordmark {
   font-family: var(--font-bruno-ace);
   font-size: clamp(56px, 9vw, 92px);
@@ -1476,22 +1471,7 @@ body {
   letter-spacing: 0.34em;
   text-indent: 0.34em;
   line-height: 1;
-  background-image: linear-gradient(
-    var(--wordmark-angle),
-    var(--wordmark-c1) 0%,
-    var(--wordmark-c2) 30%,
-    var(--wordmark-c3) 55%,
-    var(--wordmark-c2) 78%,
-    var(--wordmark-c1) 100%
-  );
-  background-size: var(--wordmark-spread) 100%;
-  background-position: 0% 50%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation:
-    wordmark-flow var(--wordmark-flow-dur) ease-in-out infinite,
-    wordmark-shimmer var(--wordmark-shimmer-dur) ease-in-out infinite;
+  color: #fff;
 }
 
 /* Ping-pong rather than a one-way loop: seamless at any --wordmark-spread. */
@@ -1556,11 +1536,9 @@ body {
   align-items: center;
   padding: 16px 0;
   border-radius: 0;
-  background: var(--surface);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid var(--surface-border);
-  border-left: none;
+  background: #000;
+  border: 0;
+  border-right: 1px solid #fff;
   border-top: none;
   border-bottom: none;
   box-shadow: none;
@@ -1580,15 +1558,13 @@ body {
   font-family: var(--font-bruno-ace), var(--font-geist-sans), sans-serif;
   font-size: 21px;
   line-height: 1;
-  background-image: linear-gradient(135deg, #cfd4ff, var(--brand));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  transition: filter 0.18s ease, transform 0.18s ease;
+  color: #fff;
+  transition: color 0.18s ease, transform 0.18s ease;
 }
 
 .nav-logo:hover {
-  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--brand) 60%, transparent));
+  color: #000;
+  background: #fff;
   transform: translateY(-1px);
 }
 
@@ -1617,21 +1593,23 @@ body {
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
-  color: var(--ink-dim);
+  color: #fff;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition-property: color, background-color, border-color;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
 }
 
 .nav-btn:hover {
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.06);
-  border-color: var(--surface-border);
+  color: #000;
+  background: #fff;
+  border-color: #fff;
 }
 
 .nav-btn.is-active {
-  color: #d9d2ff;
-  background: color-mix(in srgb, var(--brand) 22%, transparent);
-  border-color: color-mix(in srgb, var(--brand) 55%, transparent);
+  color: #000;
+  background: #fff;
+  border-color: #fff;
 }
 
 /* ----------------------------------------------------------- nav flyout */
