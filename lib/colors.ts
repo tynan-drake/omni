@@ -1,3 +1,4 @@
+import { neutralizePurple } from "./color-utils";
 import { Vibrant } from "node-vibrant/node";
 import { cacheGet, cacheSet } from "./cache";
 
@@ -44,12 +45,12 @@ function hexToHsl(hex: string): [number, number, number] {
 /** Clamp an accent into a range that glows well against the dark canvas. */
 function tuneAccent(hex: string): string {
   const [h, s, l] = hexToHsl(hex);
-  return hslToHex(h, Math.max(s, 45), Math.min(Math.max(l, 48), 68));
+  return neutralizePurple(hslToHex(h, Math.max(s, 45), Math.min(Math.max(l, 48), 68)));
 }
 
 export function fallbackAccent(name: string): string {
   const hue = FALLBACK_HUES[hashName(name) % FALLBACK_HUES.length];
-  return hslToHex(hue, 60, 58);
+  return neutralizePurple(hslToHex(hue, 60, 58));
 }
 
 /**
@@ -62,7 +63,7 @@ export async function getAccentColor(
 ): Promise<string> {
   const key = `accent-${artistId}`;
   const cached = await cacheGet<{ accent: string }>(key);
-  if (cached?.accent) return cached.accent;
+  if (cached?.accent) return neutralizePurple(cached.accent);
 
   let accent: string;
   try {

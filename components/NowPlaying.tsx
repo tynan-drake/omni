@@ -1,5 +1,7 @@
 "use client";
 
+import { neutralizePurple } from "@/lib/color-utils";
+
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Image, { type ImageLoaderProps } from "next/image";
@@ -62,7 +64,7 @@ export default function NowPlaying() {
         <motion.div
           key="now-playing"
           className="now-playing glass"
-          style={{ "--accent": accent ?? "var(--brand)" } as React.CSSProperties}
+          style={{ "--accent": accent ? neutralizePurple(accent) : "var(--brand)" } as React.CSSProperties}
           initial={{ y: 24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 24, opacity: 0 }}

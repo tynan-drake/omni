@@ -5,6 +5,7 @@ import Canvas from "./Canvas";
 import CanvasContextMenu from "./CanvasContextMenu";
 import CanvasPersistence from "./CanvasPersistence";
 import CommandPalette from "./CommandPalette";
+import DiscoveryIntroDials from "./DiscoveryIntroDials";
 import Landing from "./Landing";
 import NowPlaying from "./NowPlaying";
 import OrbDials from "./OrbDials";
@@ -39,6 +40,7 @@ export default function OmniApp() {
       <Shortcuts />
       <OrbDials />
       <WordmarkDials />
+      <DiscoveryIntroDials />
     </>
   );
 }

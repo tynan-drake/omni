@@ -1,5 +1,7 @@
 "use client";
 
+import { neutralizePurple } from "@/lib/color-utils";
+
 import { memo } from "react";
 import { mixHex } from "@/lib/color-utils";
 import { registerEdge } from "@/lib/registry";
@@ -39,7 +41,7 @@ function EdgeLayerImpl() {
               ? "var(--lineage-root-color)"
               : lineageRole === "branch"
                 ? "var(--lineage-branch-color)"
-                : mixHex(from.accent, to.accent);
+                : neutralizePurple(mixHex(neutralizePurple(from.accent), neutralizePurple(to.accent)));
         const inBridge = Boolean(activeBridge && activeEdgeIds.has(edge.id));
         const dimmed =
           !nodeMatchesFilter(filter, from) ||

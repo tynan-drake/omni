@@ -1,5 +1,7 @@
 "use client";
 
+import { neutralizePurple } from "@/lib/color-utils";
+
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { canvas } from "@/lib/canvas-controller";
@@ -201,7 +203,7 @@ function Menu({ nodeId }: { nodeId: number }) {
     >
       <motion.div
         className="orb-menu glass relative !p-0 overflow-hidden backdrop-blur-3xl"
-        style={{ "--accent": node.accent } as React.CSSProperties}
+        style={{ "--accent": neutralizePurple(node.accent) } as React.CSSProperties}
         initial={{
           opacity: 0,
           scale: prefersReducedMotion ? 1 : MENU_SHELL.initialScale,

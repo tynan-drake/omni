@@ -78,8 +78,8 @@ export default function GooeyMitosisSurface({
       className="gooey-mitosis-surface"
       blur={tuning.blur}
       contrast={tuning.contrast}
-      fill="rgba(160, 175, 255, 0.42)"
-      shadow="0 0 2px rgba(232, 238, 255, .9) inset, 0 0 24px rgba(126, 102, 255, .44)"
+      fill="rgba(177, 177, 177, 0.42)"
+      shadow="0 0 2px rgba(238, 238, 238, .9) inset, 0 0 24px rgba(118, 118, 118, .44)"
       filterPadding={72}
       waviness={tuning.waviness}
       wavinessFreq={0.012}

@@ -144,9 +144,9 @@ void main() {
   vec2 normal = normalize(gradient + vec2(0.0001));
   float lensLight = pow(saturate(dot(normal, normalize(vec2(-0.55, -0.84))) * 0.5 + 0.5), 3.0);
   color *= mix(0.84, 1.08, 1.0 - innerDepth);
-  color += vec3(0.22, 0.3, 0.48) * lensLight * 0.34;
-  color += vec3(0.3, 0.2, 0.52) * edge * 0.42;
-  color += vec3(0.74, 0.88, 1.0) * edge * lensLight * 0.58;
+  color += vec3(0.3) * lensLight * 0.34;
+  color += vec3(0.25) * edge * 0.42;
+  color += vec3(0.86) * edge * lensLight * 0.58;
 
   float handoff = 1.0 - smoothstep(0.76, 0.92, u_progress);
   float alpha = max(surface, glow) * handoff;

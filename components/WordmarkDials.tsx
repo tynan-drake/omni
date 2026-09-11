@@ -1,5 +1,6 @@
 "use client";
 
+import { neutralHex } from "@/lib/color-utils";
 import { useEffect } from "react";
 import { useDialKit, type DialConfig, type ResolvedValues } from "dialkit";
 
@@ -17,9 +18,9 @@ import { useDialKit, type DialConfig, type ResolvedValues } from "dialkit";
 const CONFIG = {
   colors: {
     /** The three stops the fill cycles through, left to right and back. */
-    start: { type: "color", default: "#cfd4ff" },
-    middle: { type: "color", default: "#8b7cf6" },
-    end: { type: "color", default: "#4f9cf0" },
+    start: { type: "color", default: "#e5e5e5" },
+    middle: { type: "color", default: "#a3a3a3" },
+    end: { type: "color", default: "#737373" },
   },
 
   flow: {
@@ -50,9 +51,9 @@ type WordmarkValues = ResolvedValues<typeof CONFIG>;
 function applyWordmark(p: WordmarkValues): void {
   const root = document.documentElement;
   const vars: Record<string, string> = {
-    "--wordmark-c1": p.colors.start,
-    "--wordmark-c2": p.colors.middle,
-    "--wordmark-c3": p.colors.end,
+    "--wordmark-c1": neutralHex(p.colors.start),
+    "--wordmark-c2": neutralHex(p.colors.middle),
+    "--wordmark-c3": neutralHex(p.colors.end),
 
     "--wordmark-angle": `${p.flow.angle}deg`,
     "--wordmark-spread": `${p.flow.spread}%`,
@@ -64,7 +65,7 @@ function applyWordmark(p: WordmarkValues): void {
 
     "--wordmark-glow": `${p.glow.radius}px`,
     "--wordmark-glow-pulse": `${p.glow.pulse}`,
-    "--wordmark-glow-color": `color-mix(in srgb, ${p.colors.middle} ${
+    "--wordmark-glow-color": `color-mix(in srgb, ${neutralHex(p.colors.middle)} ${
       p.glow.opacity * 100
     }%, transparent)`,
   };

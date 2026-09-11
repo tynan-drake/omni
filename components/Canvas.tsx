@@ -1,5 +1,7 @@
 "use client";
 
+import { neutralizePurple } from "@/lib/color-utils";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { select } from "d3-selection";
 import { zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
@@ -600,7 +602,7 @@ export default function Canvas() {
               splitDirection={splitFormation?.direction ?? null}
               splitPlan={splitPlansById.get(id) ?? null}
               splitParentAccent={
-                splitFormation ? nodes[splitFormation.parentId]?.accent ?? null : null
+                splitFormation ? neutralizePurple(nodes[splitFormation.parentId]?.accent ?? "#a3a3a3") : null
               }
             />
           );

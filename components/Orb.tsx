@@ -1,5 +1,7 @@
 "use client";
 
+import { neutralizePurple } from "@/lib/color-utils";
+
 import { memo, useMemo, useRef } from "react";
 import { motion } from "motion/react";
 import type { GraphNode } from "@/lib/types";
@@ -184,7 +186,7 @@ function OrbImpl({
         {
           width: size,
           height: size,
-          "--accent": node.accent,
+          "--accent": neutralizePurple(node.accent),
           "--orb-phase": phase,
           "--orb-size-norm": sizeNorm,
           "--orb-img": `url("${node.picture}")`,

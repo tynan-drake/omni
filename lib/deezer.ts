@@ -73,17 +73,24 @@ function toTrack(t: DeezerTrack): Track {
   };
 }
 
-/** Deezer's md5-of-empty-string placeholder portrait. */
+/** Deezer's placeholder portrait. */
 const PLACEHOLDER_IMG = /d41d8cd98f00b204e9800998ecf8427e|\/artist\/\//;
 
+/** Prefer name matches without burying smaller artists or missing portraits. */
 export async function searchArtists(q: string, limit = 8): Promise<ArtistRef[]> {
   const json = await dz<DeezerList<DeezerArtist>>(
     `/search/artist?q=${encodeURIComponent(q)}&limit=${Math.max(limit * 2, 10)}`,
     3600
   );
+  const normalize = (value: string) => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  const query = normalize(q);
+  const rank = (name: string) => {
+    const value = normalize(name);
+    return value === query ? 0 : value.startsWith(query) ? 1 : value.includes(query) ? 2 : 3;
+  };
   return (json.data ?? [])
-    .filter((a) => a.picture_medium && !PLACEHOLDER_IMG.test(a.picture_medium))
-    .sort((a, b) => (b.nb_fan ?? 0) - (a.nb_fan ?? 0))
+    .filter((artist, index, artists) => artists.findIndex((other) => other.id === artist.id) === index)
+    .sort((a, b) => rank(a.name) - rank(b.name))
     .slice(0, limit)
     .map(toArtistRef);
 }

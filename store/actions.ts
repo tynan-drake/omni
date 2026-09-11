@@ -58,7 +58,7 @@ export async function seedFromSearch(ref: ArtistRef): Promise<void> {
   const details = await fetchDetails(ref.id);
   useGraph.getState().addSeed({
     ...ref,
-    accent: details?.accent ?? "#8b7cf6",
+    accent: details?.accent ?? "#a3a3a3",
   });
   useHistory.getState().visit(ref);
 }
@@ -144,7 +144,7 @@ export async function connectArtists(
     const details = await fetchDetails(target.id);
     useGraph.getState().addSeed({
       ...target,
-      accent: details?.accent ?? "#8b7cf6",
+      accent: details?.accent ?? "#a3a3a3",
     });
     useHistory.getState().visit(target);
   }

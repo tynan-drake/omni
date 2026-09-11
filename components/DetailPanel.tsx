@@ -1,5 +1,7 @@
 "use client";
 
+import { neutralizePurple } from "@/lib/color-utils";
+
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { streamingLinks } from "@/lib/links";
@@ -45,7 +47,7 @@ export default function DetailPanel({ nodeId }: { nodeId: number }) {
   }, [nodeId]);
 
   if (!node) return null;
-  const accent = node.accent;
+  const accent = neutralizePurple(node.accent);
 
   return (
     <motion.section
@@ -57,7 +59,7 @@ export default function DetailPanel({ nodeId }: { nodeId: number }) {
         <div
           className="detail-hero !h-48 !shrink-0 !rounded-none"
           style={{
-            backgroundImage: `linear-gradient(to top, ${withAlpha("#0f1322", 0.96)} 0%, ${withAlpha("#0f1322", 0.25)} 55%, transparent 100%), url(${node.pictureBig})`,
+            backgroundImage: `linear-gradient(to top, ${withAlpha("#171717", 0.96)} 0%, ${withAlpha("#171717", 0.25)} 55%, transparent 100%), url(${node.pictureBig})`,
           }}
         >
           <button

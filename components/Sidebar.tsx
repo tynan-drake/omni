@@ -13,11 +13,14 @@ import { AudioIcon, BridgeIcon, HelpIcon, HistoryIcon, NavSearchIcon } from "./I
 
 /** Persistent left nav rail: brand/home, workflow tools, help pinned to the foot. */
 export default function Sidebar() {
+  const hasNodes = useGraph((s) => s.order.length > 0);
   const navPanel = useUi((s) => s.navPanel);
   const playlistOpen = useUi((s) => s.playlistOpen);
   const toggleNavPanel = useUi((s) => s.toggleNavPanel);
 
   useEffect(hydrateHistory, []);
+
+  if (!hasNodes) return null;
 
   const goHome = () => {
     useGraph.getState().reset();
