@@ -7,6 +7,7 @@ interface WikipediaPage {
   fullurl?: string;
   pageprops?: {
     "wikibase-shortdesc"?: string;
+    wikibase_item?: string;
   };
 }
 
@@ -20,6 +21,7 @@ export interface ArtistBiography {
   text: string;
   url: string;
   source: "Wikipedia";
+  genres: string[];
 }
 
 const MUSICIAN_DESCRIPTION =
@@ -82,6 +84,45 @@ async function queryWikipedia(params: Record<string, string>): Promise<Wikipedia
   return data.query?.pages ?? [];
 }
 
+async function getArtistGenres(entityId?: string): Promise<string[]> {
+  if (!entityId || !/^Q\d+$/.test(entityId)) return [];
+  try {
+    const query = async (params: Record<string, string>) => {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const response = await fetch(`https://www.wikidata.org/w/api.php?${new URLSearchParams({
+            action: "wbgetentities", format: "json", ...params,
+          })}`, {
+            cache: "no-store",
+            headers: { "User-Agent": "Omni music discovery/0.1 (artist genre lookup)" },
+            signal: AbortSignal.timeout(8000),
+          });
+          if (!response.ok) throw new Error(`Wikidata HTTP ${response.status}`);
+          const data = await response.json();
+          if (data.error) throw new Error(data.error.info ?? "Wikidata lookup failed");
+          return data;
+        } catch (error) {
+          if (attempt === 1) throw error;
+        }
+      }
+      throw new Error("Wikidata lookup failed");
+    };
+    const data = await query({ ids: entityId, props: "claims" });
+    const claims = data.entities?.[entityId]?.claims?.P136 ?? [];
+    const ids = [...new Set<string>(claims
+      .filter((claim: { rank?: string }) => claim.rank !== "deprecated")
+      .map((claim: { mainsnak?: { datavalue?: { value?: { id?: string } } } }) =>
+        claim.mainsnak?.datavalue?.value?.id)
+      .filter((id: unknown): id is string => typeof id === "string" && /^Q\d+$/.test(id)))];
+    if (!ids.length) return [];
+    const labels = await query({ ids: ids.join("|"), props: "labels", languages: "en" });
+    return [...new Set(ids.map((id) => labels.entities?.[id]?.labels?.en?.value)
+      .filter((label): label is string => typeof label === "string"))];
+  } catch {
+    return [];
+  }
+}
+
 /** Find a short, editorial artist introduction without making details depend on it. */
 export async function getArtistBiography(
   artistName: string
@@ -108,6 +149,7 @@ export async function getArtistBiography(
       text: page.extract,
       url: page.fullurl,
       source: "Wikipedia",
+      genres: await getArtistGenres(page.pageprops?.wikibase_item),
     };
   } catch (error) {
     console.warn(`[Wikipedia biography: ${artistName}]`, error);

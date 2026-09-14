@@ -35,6 +35,8 @@ export interface Track {
 export interface ArtistDetails extends ArtistRef {
   accent: string;
   fans: number;
+  genres?: string[];
+  genresCheckedAt?: number;
   startYear: number | null;
   tracks: Track[];
   bio: string | null;

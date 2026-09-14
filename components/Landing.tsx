@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { useReducedMotion } from "motion/react";
 import { canvas } from "@/lib/canvas-controller";
 import { resolveWheelGesture } from "@/lib/canvas-gestures";
 import { discoveryCells, type DiscoveryCell } from "@/lib/discovery-field";
@@ -14,9 +14,15 @@ import { useGraph } from "@/store/graph";
 import { useHistory } from "@/store/history";
 import { useUi } from "@/store/ui";
 import { primeSplitAudio } from "@/lib/split-audio";
-import DiscoveryArtistMenu, { type DiscoveryAction } from "./DiscoveryArtistMenu";
+import DiscoveryArtistMenu, { type DiscoveryAction, type DiscoveryOrigin } from "./DiscoveryArtistMenu";
 import { SearchIcon } from "./Icons";
 import { useArtistSearch } from "@/hooks/useArtistSearch";
+
+/* Canvas handoff: surrounding portraits shrink/fade for 400ms, with a
+ * 0/30/60ms stagger. The selected portrait holds still; exploration starts
+ * after 460ms. Reduced motion skips the departure entirely. */
+const DEPARTURE_MS = 460;
+const DEPARTURE_STAGGER = ["delay-0!", "delay-[30ms]!", "delay-[60ms]!"];
 
 export default function Landing() {
   const hasNodes = useGraph((s) => s.order.length > 0);
@@ -135,24 +141,28 @@ function Discovery() {
     requestAnimationFrame(() => trigger.current?.focus({ preventScroll: true }));
   };
 
-  const enter = async (action: DiscoveryAction) => {
+  const enter = async (action: DiscoveryAction, origin: DiscoveryOrigin) => {
     if (!selected || entering.current) return;
     const { artist } = selected;
     entering.current = true;
+    setSelected({ artist, ...origin });
     setTransitioning(true);
     if (action === "back" || action === "forward") primeSplitAudio();
     try {
       const [details] = await Promise.all([
         fetchDetails(artist.id),
-        new Promise((resolve) => setTimeout(resolve, reducedMotion ? 0 : 550)),
+        new Promise((resolve) => setTimeout(resolve, reducedMotion ? 0 : DEPARTURE_MS)),
       ]);
       if (!alive.current) return;
+      canvas.adoptDiscovery(artist.id, origin.x, origin.y, origin.size);
       useGraph.getState().addSeed({ ...artist, accent: details?.accent ?? "#a3a3a3" });
       useHistory.getState().visit(artist);
       requestAnimationFrame(() => {
-        canvas.fitAll();
-        if (action === "back" || action === "forward") void expand(artist.id, action);
-        else if (action === "details") useUi.getState().openDetail(artist.id);
+        if (!useGraph.getState().nodes[artist.id]) return;
+        if (action === "back" || action === "forward") {
+          document.querySelector<HTMLElement>(`[data-orb-id="${artist.id}"]`)?.focus({ preventScroll: true });
+          void expand(artist.id, action);
+        }
         else useUi.getState().startConnecting(artist.id);
       });
     } catch {
@@ -169,7 +179,7 @@ function Discovery() {
   };
 
   return (
-    <main className={`discovery left-0! ${transitioning ? "is-entering" : ""}`}>
+    <main className="discovery left-0!" aria-busy={transitioning}>
       <div
         ref={surface}
         className={`discovery-surface ${dragging ? "is-dragging" : ""}`}
@@ -215,30 +225,30 @@ function Discovery() {
           }
         }}
       >
-        <div className="discovery-dust" aria-hidden="true" style={{ backgroundPosition: `${camera.x % 173}px ${camera.y % 173}px` }} />
+        <div className={`discovery-dust transition-opacity duration-400 motion-reduce:transition-none ${transitioning ? "opacity-0" : "opacity-100"}`} aria-hidden="true" style={{ backgroundPosition: `${camera.x % 173}px ${camera.y % 173}px` }} />
         <div className="discovery-world" data-intro={introPending ? "pending" : undefined} style={{ transform: `translate3d(${camera.x + viewport.width / 2}px, ${camera.y + viewport.height / 2}px, 0)` }}>
           {intro?.params.ripple.enabled && <Wavefront run={intro} />}
-          {cells.map((cell) => {
+          {cells.map((cell, index) => {
             const artist = catalogue[cell.index];
             const sx = cell.x + camera.x + viewport.width / 2;
             const sy = cell.y + camera.y + viewport.height / 2;
             const reachable = sx > cell.size / 2 && sx < viewport.width - cell.size / 2 && sy > 170 && sy < viewport.height - 130;
             return (
               <LandingNode key={cell.key} cell={cell} run={intro} style={{ left: cell.x, top: cell.y, pointerEvents: sy < 145 || sy > viewport.height - 110 ? "none" : undefined, "--artist-size": `${cell.size}px` } as CSSProperties}>
-                <ArtistButton artist={artist} tabIndex={reachable ? 0 : -1} onPick={pick} />
+                <ArtistButton artist={artist} tabIndex={reachable ? 0 : -1} onPick={pick} departing={transitioning} departureDelay={DEPARTURE_STAGGER[index % DEPARTURE_STAGGER.length]} />
               </LandingNode>
             );
           })}
         </div>
       </div>
 
-      <header className={`discovery-header bg-radial! from-black/95 from-15% via-black/75 via-40% to-transparent to-75% max-sm:bg-linear-to-b! transition-opacity! ease-out motion-reduce:transition-none! ${canvasMoving ? "opacity-0! duration-200!" : selected ? "opacity-20! duration-700!" : "opacity-100! duration-700!"}`}>
+      <header className={`discovery-header bg-radial! from-black/95 from-15% via-black/75 via-40% to-transparent to-75% max-sm:bg-linear-to-b! transition-opacity! ease-out motion-reduce:transition-none! ${transitioning || canvasMoving ? "opacity-0! duration-200!" : selected ? "opacity-20! duration-700!" : "opacity-100! duration-700!"}`}>
         <h1 className="landing-wordmark">OMNI</h1>
         <p>Choose an artist. Follow the connections.</p>
       </header>
 
       {searching && (
-        <section ref={resultsRef} className="discovery-results" aria-label="Artist search results" aria-busy={loading} inert={selected !== null}
+        <section ref={resultsRef} className={`discovery-results transition-opacity duration-400 motion-reduce:transition-none ${transitioning ? "opacity-0" : "opacity-100"}`} aria-label="Artist search results" aria-busy={loading} inert={selected !== null}
           onKeyDown={(event) => {
             if (event.nativeEvent.isComposing) return;
             if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); clearSearch(); return; }
@@ -252,7 +262,7 @@ function Discovery() {
           }}>
           <div className="discovery-results-heading"><span>Find your next starting point</span><span>{loading ? "Searching…" : `${results.length} ${results.length === 1 ? "artist" : "artists"}`}</span></div>
           <div className={`discovery-result-grid ${loading ? "is-updating" : ""}`}>
-            {results.map((artist) => <ArtistButton key={artist.id} artist={artist} onPick={pick} disabled={loading || !!searchError} />)}
+            {results.map((artist) => <ArtistButton key={artist.id} artist={artist} onPick={pick} departing={transitioning} disabled={loading || !!searchError} />)}
             {loading && !results.length && [0, 1, 2, 3].map((n) => <div className="discovery-result-skeleton" key={n} aria-hidden="true"><span /><i /></div>)}
           </div>
           {!loading && !searchError && !results.length && <div className="discovery-search-message"><SearchIcon size={24} /><p>No artists found for “{q}”</p><span>Try a different spelling or a shorter name.</span></div>}
@@ -260,7 +270,7 @@ function Discovery() {
         </section>
       )}
 
-      <footer className="discovery-footer bg-none! bg-transparent!">
+      <footer className={`discovery-footer bg-none! bg-transparent! transition-opacity duration-400 motion-reduce:transition-none ${transitioning ? "opacity-0" : "opacity-100"}`}>
         <p className="discovery-status" role="status">{transitioning && selected ? `Opening ${selected.artist.name}…` : error || searchError || (searching ? (loading ? "Finding your artist…" : `${results.length} artists found`) : query ? "Type at least 2 characters" : "")}</p>
         <form className="discovery-search bg-neutral-900/95! shadow-none! ring-1 ring-white/20 text-neutral-400! focus-within:ring-2 focus-within:ring-neutral-300 [&_input]:text-neutral-100! [&_input]:placeholder:text-neutral-400! [&_button]:focus-visible:outline-neutral-300!" role="search" onSubmit={(event) => {
           event.preventDefault();
@@ -285,13 +295,16 @@ function Discovery() {
 
       {selected && !transitioning && <DiscoveryArtistMenu key={selected.artist.id} selection={selected} onDismiss={dismiss} onAction={enter} />}
 
-      {selected && transitioning && <motion.div className="discovery-chosen" initial={{ left: selected.x, top: selected.y, opacity: 1 }} animate={{ left: reducedMotion ? selected.x : window.innerWidth / 2 + 20, top: reducedMotion ? selected.y : window.innerHeight / 2 }} transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }} style={{ "--artist-size": `${selected.size}px` } as CSSProperties}>
-        <span className="discovery-portrait">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={selected.artist.picture} alt="" />
-        </span>
-        <span className="discovery-name">{selected.artist.name}</span>
-      </motion.div>}
+      {selected && transitioning && <svg className="pointer-events-none fixed inset-0 z-50 size-full bg-black/70" aria-hidden="true">
+        <foreignObject x={selected.x - selected.size / 2} y={selected.y - selected.size / 2} width={selected.size} height={selected.size} className="overflow-visible">
+          <div className="relative size-full rounded-full bg-neutral-800 ring-1 ring-white/30">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={selected.artist.picture} alt="" className="size-full rounded-full object-cover" />
+            <span className="absolute left-1/2 top-full mt-3 w-48 -translate-x-1/2 text-center text-sm text-neutral-200">{selected.artist.name}</span>
+          </div>
+        </foreignObject>
+      </svg>}
+
     </main>
   );
 }
@@ -335,9 +348,9 @@ function Wavefront({ run }: { run: IntroRun }) {
   return <div ref={ring} className="discovery-wavefront" aria-hidden="true" style={{ left: run.origin.x, top: run.origin.y, width: WAVEFRONT_BASE_RADIUS * 2, height: WAVEFRONT_BASE_RADIUS * 2, "--ripple-band": `${run.params.ripple.band}%` } as CSSProperties} />;
 }
 
-function ArtistButton({ artist, onPick, tabIndex, disabled }: { artist: ArtistRef; onPick: (artist: ArtistRef, element: HTMLElement) => Promise<void>; tabIndex?: number; disabled?: boolean }) {
+function ArtistButton({ artist, onPick, tabIndex, disabled, departing = false, departureDelay = "delay-0!" }: { artist: ArtistRef; onPick: (artist: ArtistRef, element: HTMLElement) => Promise<void>; tabIndex?: number; disabled?: boolean; departing?: boolean; departureDelay?: string }) {
   return (
-    <button className="discovery-artist" disabled={disabled} tabIndex={tabIndex} aria-label={`Explore ${artist.name}`} onClick={(event) => void onPick(artist, event.currentTarget)}>
+    <button className={`discovery-artist transition-[scale,opacity]! duration-400! ease-out! motion-reduce:transition-none! ${departing ? `scale-50 opacity-0 ${departureDelay}` : "scale-100 opacity-100"}`} disabled={disabled} tabIndex={tabIndex} aria-label={`Explore ${artist.name}`} onClick={(event) => void onPick(artist, event.currentTarget)}>
       <span className="discovery-portrait">
         <span className="discovery-initial" aria-hidden="true">{artist.name.charAt(0)}</span>
         {/* eslint-disable-next-line @next/next/no-img-element */}

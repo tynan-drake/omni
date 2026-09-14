@@ -13,6 +13,7 @@ export interface ViewportTransform {
 }
 
 interface CanvasController {
+  adoptDiscovery: (nodeId: number, x: number, y: number, size: number) => void;
   fitAll: () => void;
   fitNodes: (ids: number[]) => void;
   flyTo: (nodeId: number) => void;
@@ -23,6 +24,7 @@ interface CanvasController {
 }
 
 let impl: CanvasController = {
+  adoptDiscovery: () => {},
   fitAll: () => {},
   fitNodes: () => {},
   flyTo: () => {},
@@ -36,6 +38,7 @@ export function registerCanvasController(c: CanvasController): void {
 }
 
 export const canvas = {
+  adoptDiscovery: (nodeId: number, x: number, y: number, size: number) => impl.adoptDiscovery(nodeId, x, y, size),
   fitAll: () => impl.fitAll(),
   fitNodes: (ids: number[]) => impl.fitNodes(ids),
   flyTo: (id: number) => impl.flyTo(id),

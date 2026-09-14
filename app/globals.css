@@ -1538,7 +1538,7 @@ body {
   border-radius: 0;
   background: #000;
   border: 0;
-  border-right: 1px solid #fff;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   border-top: none;
   border-bottom: none;
   box-shadow: none;

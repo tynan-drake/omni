@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { hasFreshGenres } from "@/lib/artist-details-cache";
 import type {
   ArtistDetails,
   ArtistRef,
@@ -31,7 +32,7 @@ const inFlight = new Map<number, Promise<ArtistDetails | null>>();
 /** Fetch full artist details (tracks, biography, accent, startYear) with client caching. */
 export async function fetchDetails(id: number): Promise<ArtistDetails | null> {
   const cached = useArtistCache.getState().details[id];
-  if (cached) return cached;
+  if (cached && hasFreshGenres(cached)) return cached;
   const pending = inFlight.get(id);
   if (pending) return pending;
 

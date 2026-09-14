@@ -82,35 +82,47 @@ export default function NowPlaying() {
             ))}
           </div>
           {audio.track.cover && (
-            <div
-              className={`relative z-10 h-11 w-11 shrink-0 animate-[spin_6s_linear_infinite] rounded-full bg-black p-1 shadow-lg ring-1 ring-white/10 motion-reduce:animate-none ${audio.playing ? "[animation-play-state:running]" : "[animation-play-state:paused]"}`}
-            >
-              <Image
-                loader={deezerCoverLoader}
-                src={audio.track.cover}
-                alt={`${audio.track.albumTitle ?? audio.track.title} cover`}
-                width={36}
-                height={36}
-                className="h-full w-full rounded-full object-cover"
-              />
-              <span
-                aria-hidden="true"
-                className="absolute inset-1 rounded-full bg-gradient-to-br from-white/20 via-transparent to-white/10"
-              />
-              <span
-                aria-hidden="true"
-                className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black ring-1 ring-white/30"
-              />
+            <div className="group/record relative z-10 h-11 w-11 shrink-0">
+              <div
+                className={`relative h-full w-full animate-[spin_6s_linear_infinite] rounded-full bg-black p-1 shadow-lg ring-1 ring-white/10 motion-reduce:animate-none ${audio.playing ? "[animation-play-state:running]" : "[animation-play-state:paused]"}`}
+              >
+                <Image
+                  loader={deezerCoverLoader}
+                  src={audio.track.cover}
+                  alt={`${audio.track.albumTitle ?? audio.track.title} cover`}
+                  width={36}
+                  height={36}
+                  className="h-full w-full rounded-full object-cover"
+                />
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-1 rounded-full bg-gradient-to-br from-white/20 via-transparent to-white/10"
+                />
+                <span
+                  aria-hidden="true"
+                  className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black ring-1 ring-white/30"
+                />
+              </div>
+              <button
+                type="button"
+                className="absolute inset-0 grid place-items-center rounded-full bg-black/60 text-white opacity-0 transition-opacity duration-150 group-hover/record:opacity-100 group-focus-within/record:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.96] motion-reduce:transition-none"
+                aria-label={audio.playing ? "Pause" : "Play"}
+                onClick={() => audio.toggle()}
+              >
+                {audio.playing ? <PauseIcon size={13} /> : <PlayIcon size={13} />}
+              </button>
             </div>
           )}
-          <button
-            type="button"
-            className="np-toggle relative z-10"
-            aria-label={audio.playing ? "Pause" : "Play"}
-            onClick={() => audio.toggle()}
-          >
-            {audio.playing ? <PauseIcon size={13} /> : <PlayIcon size={13} />}
-          </button>
+          {!audio.track.cover && (
+            <button
+              type="button"
+              className="np-toggle relative z-10"
+              aria-label={audio.playing ? "Pause" : "Play"}
+              onClick={() => audio.toggle()}
+            >
+              {audio.playing ? <PauseIcon size={13} /> : <PlayIcon size={13} />}
+            </button>
+          )}
           <div className="np-text relative z-10">
             <span className="np-title">{audio.track.title}</span>
             <span className="np-artist">{audio.artistName}</span>

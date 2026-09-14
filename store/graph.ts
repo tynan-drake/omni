@@ -567,7 +567,7 @@ export const useGraph = create<GraphState>((set, get) => ({
   reset: () => set({ ...emptyGraph(), selectedIds: [] }),
 }));
 
-export function orbSize(node: GraphNode): number {
+export function orbSize(node: Pick<GraphNode, "kind" | "generation">): number {
   if (node.kind === "seed") return 132;
   if (node.kind === "connector") return node.generation <= 1 ? 88 : 72;
   if (node.generation <= 1) return 92;

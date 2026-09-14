@@ -20,6 +20,7 @@ const MIN_ORB = 64;
 const MAX_ORB = 132;
 
 interface OrbProps {
+  fromDiscovery?: boolean;
   node: GraphNode;
   dimmed: boolean;
   selected: boolean;
@@ -47,6 +48,7 @@ const SPLIT_CHILD = {
 } as const;
 
 function OrbImpl({
+  fromDiscovery = false,
   node,
   dimmed,
   selected,
@@ -59,6 +61,7 @@ function OrbImpl({
   splitPlan,
   splitParentAccent,
 }: OrbProps) {
+  const positioned = useRef(false);
   const sizeScale = useOrbDials((s) => s.sizeScale);
   const entrance = useOrbDials((s) => s.entrance);
   const connectingFrom = useUi((s) => s.connectingFrom);
@@ -157,7 +160,13 @@ function OrbImpl({
 
   return (
     <div
-      ref={(el) => registerOrb(node.id, el)}
+      ref={(el) => {
+        registerOrb(node.id, el);
+        if (el && fromDiscovery && !positioned.current) {
+          el.style.transform = `translate3d(${-size / 2}px, ${-size / 2}px, 0)`;
+          positioned.current = true;
+        }
+      }}
       data-orb-id={node.id}
       role="button"
       tabIndex={dimmed ? -1 : 0}
@@ -233,7 +242,7 @@ function OrbImpl({
       <motion.div
         className="orb-inner"
         initial={
-          isSplitChild
+          fromDiscovery ? false : isSplitChild
             ? {
                 scale: SPLIT_CHILD.scaleByStage[1],
                 opacity: SPLIT_CHILD.opacityByStage[1],

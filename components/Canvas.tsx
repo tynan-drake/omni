@@ -23,6 +23,7 @@ import {
   animateSplitFormation,
   getPositions,
   onSimTick,
+  restorePositions,
   setTimelineTargets,
   syncGraph,
 } from "@/lib/simulation";
@@ -56,6 +57,7 @@ export default function Canvas() {
   const ignoreBackgroundClickRef = useRef(false);
   const [marquee, setMarquee] = useState<ReturnType<typeof selectionRect> | null>(null);
   const [middlePanning, setMiddlePanning] = useState(false);
+  const [discoverySeed, setDiscoverySeed] = useState<number | null>(null);
 
   const nodes = useGraph((s) => s.nodes);
   const order = useGraph((s) => s.order);
@@ -248,6 +250,13 @@ export default function Canvas() {
     };
 
     registerCanvasController({
+      adoptDiscovery: (nodeId, x, y, size) => {
+        // Keep the selected portrait's screen position and diameter at handoff.
+        const diameter = orbSize({ kind: "seed", generation: 0 }) * useOrbDials.getState().sizeScale;
+        restorePositions({ [nodeId]: { x: 0, y: 0 } });
+        setDiscoverySeed(nodeId);
+        sel.interrupt().call(behavior.transform, zoomIdentity.translate(x, y).scale(size / diameter));
+      },
       fitAll,
       fitNodes,
       flyTo,
@@ -259,7 +268,12 @@ export default function Canvas() {
       },
     });
 
+    const unsubscribe = useGraph.subscribe((state, previous) => {
+      if (previous.order.length && !state.order.length) setDiscoverySeed(null);
+    });
+
     return () => {
+      unsubscribe();
       cancelAnimationFrame(initRaf);
       container.removeEventListener("wheel", onWheelPan);
       sel.on(".zoom", null);
@@ -581,6 +595,7 @@ export default function Canvas() {
             <Orb
               key={`${id}:${epoch}`}
               node={node}
+              fromDiscovery={id === discoverySeed}
               dimmed={
                 !nodeMatchesFilter(filter, node) ||
                 Boolean(activeBridgeId && !activeNodeIds.has(id))
