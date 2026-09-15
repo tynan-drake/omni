@@ -32,6 +32,14 @@ export interface Track {
   cover?: string;
 }
 
+export interface Album {
+  id: number;
+  title: string;
+  cover: string;
+  releaseDate: string;
+  type: string;
+}
+
 export interface ArtistDetails extends ArtistRef {
   accent: string;
   fans: number;
