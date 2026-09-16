@@ -5,11 +5,11 @@ import type { ArtistRef } from "@/lib/types";
 import { fetchDetails } from "@/store/actions";
 import { useAudio } from "@/store/audio";
 import { useUi } from "@/store/ui";
-import { BranchesIcon, CloseIcon, InfoIcon, LinkIcon, PauseIcon, PlayIcon, RootsIcon } from "./Icons";
+import { BranchesIcon, CheckIcon, CloseIcon, InfoIcon, LinkIcon, PauseIcon, PlayIcon, RootsIcon } from "./Icons";
 import DetailPanel from "./DetailPanel";
 
-export type DiscoveryAction = "back" | "forward" | "connect";
-export type DiscoveryOrigin = { x: number; y: number; size: number };
+export type OrbAction = "back" | "forward" | "connect";
+export type OrbMenuOrigin = { x: number; y: number; size: number };
 
 const actionClass = "grid size-11 shrink-0 place-items-center rounded-full border border-white/15 bg-neutral-950/95 text-neutral-200 shadow-xl backdrop-blur-xl transition-colors hover:border-white/35 hover:bg-neutral-800 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white";
 const tooltipClass = "pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-neutral-950 px-2.5 py-1.5 text-xs font-medium text-neutral-200 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none";
@@ -29,12 +29,12 @@ const TIMING = {
 };
 const MENU_ENTRANCE = "motion-safe:transition-[opacity,scale,translate] motion-safe:duration-200 motion-safe:ease-out motion-safe:starting:opacity-0 motion-safe:starting:scale-90 motion-safe:starting:translate-y-0.5";
 
-function OrbitAction({ label, className, onClick, children, entranceDelay, tooltipSide = "bottom" }: { label: string; className: string; onClick: () => void; children: ReactNode; entranceDelay: string; tooltipSide?: "top" | "bottom" }) {
+function OrbitAction({ label, className, onClick, children, entranceDelay, disabled = false, busy = false, tooltipSide = "bottom" }: { label: string; className: string; onClick: () => void; children: ReactNode; entranceDelay: string; disabled?: boolean; busy?: boolean; tooltipSide?: "top" | "bottom" }) {
   return (
     <div className={`pointer-events-auto absolute ${className}`}>
       <div className={`${MENU_ENTRANCE} ${entranceDelay}`}>
-        <button type="button" aria-label={label} className={`${actionClass} group relative`} onClick={onClick}>
-          <span aria-hidden="true">{children}</span>
+        <button type="button" aria-label={label} disabled={disabled || busy} aria-busy={busy} className={`${actionClass} group relative disabled:opacity-50 disabled:cursor-default`} onClick={onClick}>
+          <span aria-hidden="true" className={busy ? "motion-safe:animate-pulse" : undefined}>{disabled && !busy ? <CheckIcon size={18} /> : children}</span>
           <span aria-hidden="true" className={`${tooltipClass} ${tooltipSide === "top" ? "bottom-full mb-2" : "top-full mt-2"}`}>{label}</span>
         </button>
       </div>
@@ -42,17 +42,23 @@ function OrbitAction({ label, className, onClick, children, entranceDelay, toolt
   );
 }
 
-export default function DiscoveryArtistMenu({ selection, onDismiss, onAction }: {
+export default function ArtistOrbMenu({ selection, onDismiss, onAction, detailsOpen: controlledDetailsOpen, onDetailsChange, expanded, expanding }: {
   selection: { artist: ArtistRef; x: number; y: number; size: number };
   onDismiss: () => void;
-  onAction: (action: DiscoveryAction, origin: DiscoveryOrigin) => void;
+  detailsOpen?: boolean;
+  onDetailsChange?: (open: boolean) => void;
+  expanded?: { back?: boolean; forward?: boolean };
+  expanding?: { back?: boolean; forward?: boolean };
+  onAction: (action: OrbAction, origin: OrbMenuOrigin) => void;
 }) {
   const { artist, x, y, size } = selection;
   const ref = useRef<HTMLDivElement>(null);
   const mounted = useRef(false);
   const audio = useAudio();
   const [busy, setBusy] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [localDetailsOpen, setLocalDetailsOpen] = useState(false);
+  const detailsOpen = controlledDetailsOpen ?? localDetailsOpen;
+  const setDetailsOpen = onDetailsChange ?? setLocalDetailsOpen;
   const [viewport, setViewport] = useState({ width: 1512, height: 857 });
   const playing = audio.artistId === artist.id && audio.playing;
 
@@ -75,7 +81,7 @@ export default function DiscoveryArtistMenu({ selection, onDismiss, onAction }: 
   const radius = diameter / 2;
   const cx = Math.max(radius + 112, Math.min(x, viewport.width - radius - 112));
   const cy = Math.max(radius + 104, Math.min(y, viewport.height - radius - 100));
-  const act = (action: DiscoveryAction) => onAction(action, { x: cx, y: cy, size: diameter });
+  const act = (action: OrbAction) => onAction(action, { x: cx, y: cy, size: diameter });
   const panelWidth = Math.min(720, viewport.width - 24);
   const panelHeight = Math.min(440, viewport.height - 24);
   const panelX = Math.max(12, Math.min(cx + radius + 20 + panelWidth <= viewport.width - 12 ? cx + radius + 20 : cx - radius - 20 - panelWidth, viewport.width - panelWidth - 12));
@@ -123,8 +129,8 @@ export default function DiscoveryArtistMenu({ selection, onDismiss, onAction }: 
           <div className="relative size-full" inert={detailsOpen} onWheel={(event) => event.stopPropagation()}>
             {!detailsOpen && <>
             <OrbitAction label="Connect to…" entranceDelay={TIMING.connect} tooltipSide="top" className="bottom-full left-1/2 mb-4 -translate-x-1/2" onClick={() => act("connect")}><LinkIcon size={18} /></OrbitAction>
-            <OrbitAction label="Roots" entranceDelay={TIMING.roots} className="right-full top-1/2 mr-3 -translate-y-1/2" onClick={() => act("back")}><RootsIcon size={18} /></OrbitAction>
-            <OrbitAction label="Branches" entranceDelay={TIMING.branches} className="left-full top-1/2 ml-3 -translate-y-1/2" onClick={() => act("forward")}><BranchesIcon size={18} /></OrbitAction>
+            <OrbitAction label="Roots" disabled={expanded?.back} busy={expanding?.back} entranceDelay={TIMING.roots} className="right-full top-1/2 mr-3 -translate-y-1/2" onClick={() => act("back")}><RootsIcon size={18} /></OrbitAction>
+            <OrbitAction label="Branches" disabled={expanded?.forward} busy={expanding?.forward} entranceDelay={TIMING.branches} className="left-full top-1/2 ml-3 -translate-y-1/2" onClick={() => act("forward")}><BranchesIcon size={18} /></OrbitAction>
             </>}
             <button type="button" data-avatar aria-label={`Open tracks and details for ${artist.name}`} title="Open tracks & details" className="pointer-events-auto relative block size-full overflow-hidden rounded-full bg-neutral-800 shadow-2xl ring-1 ring-white/30 transition-shadow hover:ring-white/60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white" onClick={() => setDetailsOpen(true)}>
               <span className="absolute inset-0 grid place-items-center text-3xl" aria-hidden="true">{artist.name.charAt(0)}</span>

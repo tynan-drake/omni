@@ -14,7 +14,7 @@ import { useGraph } from "@/store/graph";
 import { useHistory } from "@/store/history";
 import { useUi } from "@/store/ui";
 import { primeSplitAudio } from "@/lib/split-audio";
-import DiscoveryArtistMenu, { type DiscoveryAction, type DiscoveryOrigin } from "./DiscoveryArtistMenu";
+import ArtistOrbMenu, { type OrbAction, type OrbMenuOrigin } from "./ArtistOrbMenu";
 import { SearchIcon } from "./Icons";
 import { useArtistSearch } from "@/hooks/useArtistSearch";
 
@@ -141,7 +141,7 @@ function Discovery() {
     requestAnimationFrame(() => trigger.current?.focus({ preventScroll: true }));
   };
 
-  const enter = async (action: DiscoveryAction, origin: DiscoveryOrigin) => {
+  const enter = async (action: OrbAction, origin: OrbMenuOrigin) => {
     if (!selected || entering.current) return;
     const { artist } = selected;
     entering.current = true;
@@ -293,7 +293,7 @@ function Discovery() {
         <p className="discovery-guidance">{searching ? "↑ ↓ Browse artists · Enter to explore · Esc to clear" : "Press / to search for an artist"}</p>
       </footer>
 
-      {selected && !transitioning && <DiscoveryArtistMenu key={selected.artist.id} selection={selected} onDismiss={dismiss} onAction={enter} />}
+      {selected && !transitioning && <ArtistOrbMenu key={selected.artist.id} selection={selected} onDismiss={dismiss} onAction={enter} />}
 
       {selected && transitioning && <svg className="pointer-events-none fixed inset-0 z-50 size-full bg-black/70" aria-hidden="true">
         <foreignObject x={selected.x - selected.size / 2} y={selected.y - selected.size / 2} width={selected.size} height={selected.size} className="overflow-visible">
