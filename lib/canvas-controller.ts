@@ -1,5 +1,7 @@
 "use client";
 
+import type { ArtistRef } from "./types";
+
 /**
  * Imperative bridge to the mounted Canvas viewport, so shortcuts, the command
  * palette, and popups can drive zoom/pan without prop-drilling. The Canvas
@@ -13,6 +15,7 @@ export interface ViewportTransform {
 }
 
 interface CanvasController {
+  revealArtist: (artist: ArtistRef) => Promise<void>;
   adoptDiscovery: (nodeId: number, x: number, y: number, size: number) => void;
   fitAll: () => void;
   fitNodes: (ids: number[]) => void;
@@ -24,6 +27,7 @@ interface CanvasController {
 }
 
 let impl: CanvasController = {
+  revealArtist: async () => {},
   adoptDiscovery: () => {},
   fitAll: () => {},
   fitNodes: () => {},
@@ -38,6 +42,7 @@ export function registerCanvasController(c: CanvasController): void {
 }
 
 export const canvas = {
+  revealArtist: (artist: ArtistRef) => impl.revealArtist(artist),
   adoptDiscovery: (nodeId: number, x: number, y: number, size: number) => impl.adoptDiscovery(nodeId, x, y, size),
   fitAll: () => impl.fitAll(),
   fitNodes: (ids: number[]) => impl.fitNodes(ids),

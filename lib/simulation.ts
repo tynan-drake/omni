@@ -99,6 +99,7 @@ const labelLayout: LabelLayout = { ...DEFAULT_LABEL_LAYOUT };
 const tickHandlers = new Set<TickHandler>();
 const positions: Positions = new Map();
 const restoredPositions = new Map<number, { x: number; y: number }>();
+const searchOrigins = new Map<number, { x: number; y: number }>();
 let timelineTargets = new Map<number, number>();
 let temporalLinks: SimLink[] = [];
 
@@ -228,11 +229,11 @@ function ensureSim(): Simulation<SimNode, SimLink> {
     .force("label-collision", labelCollision)
     .force(
       "x",
-      forceX<SimNode>((d) => timelineTargets.get(d.id) ?? 0).strength((d) =>
+      forceX<SimNode>((d) => timelineTargets.get(d.id) ?? searchOrigins.get(d.id)?.x ?? 0).strength((d) =>
         timelineTargets.has(d.id) ? 0.085 : physics.gravity
       )
     )
-    .force("y", forceY<SimNode>(0).strength(physics.gravity))
+    .force("y", forceY<SimNode>((d) => searchOrigins.get(d.id)?.y ?? 0).strength(physics.gravity))
     .force("temporal", temporalFlow)
     .force("stir", stir)
     .velocityDecay(physics.friction)
@@ -278,11 +279,17 @@ export function restorePositions(saved: Record<number, { x: number; y: number }>
   }
 }
 
+/** Stage an unseen search result without disturbing restored positions. */
+export function stageSearchPosition(id: number, point: { x: number; y: number }): void {
+  restoredPositions.set(id, point);
+  searchOrigins.set(id, point);
+}
+
 export function setTimelineTargets(targets: Map<number, number>): void {
   timelineTargets = new Map(targets);
   const s = ensureSim();
   (s.force("x") as ForceX<SimNode> | undefined)
-    ?.x((d) => timelineTargets.get(d.id) ?? 0)
+    ?.x((d) => timelineTargets.get(d.id) ?? searchOrigins.get(d.id)?.x ?? 0)
     .strength((d) => (timelineTargets.has(d.id) ? 0.085 : physics.gravity));
   s.alpha(Math.max(s.alpha(), 0.32)).restart();
 }
@@ -301,6 +308,11 @@ export function syncGraph(
   const existing = new Map(simNodes.map((n) => [n.id, n]));
   const nextIds = new Set(nodes.map((n) => n.id));
 
+  // An isolated search result rests where it was discovered. Once connected,
+  // it rejoins the ordinary graph forces with its new family.
+  for (const id of searchOrigins.keys()) {
+    if (!nextIds.has(id) || edges.some((edge) => edge.from === id || edge.to === id)) searchOrigins.delete(id);
+  }
   let usedRestore = false;
   simNodes = nodes.map((n) => {
     const prev = existing.get(n.id);
@@ -477,9 +489,9 @@ export function setPhysics(next: Partial<OrbPhysics>): void {
     -physics.repulsion
   );
   (s.force("x") as ForceX<SimNode> | undefined)
-    ?.x((d) => timelineTargets.get(d.id) ?? 0)
+    ?.x((d) => timelineTargets.get(d.id) ?? searchOrigins.get(d.id)?.x ?? 0)
     .strength((d) => (timelineTargets.has(d.id) ? 0.085 : physics.gravity));
-  (s.force("y") as ForceY<SimNode> | undefined)?.strength(physics.gravity);
+  (s.force("y") as ForceY<SimNode> | undefined)?.y((d) => searchOrigins.get(d.id)?.y ?? 0).strength(physics.gravity);
   (s.force("link") as ForceLink<SimNode, SimLink> | undefined)
     ?.distance(linkDistance)
     .strength(linkStrength);
@@ -545,6 +557,7 @@ export function resetSimulation(): void {
   simNodes = [];
   positions.clear();
   restoredPositions.clear();
+  searchOrigins.clear();
   timelineTargets.clear();
   temporalLinks = [];
   sim?.nodes([]);

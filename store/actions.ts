@@ -54,6 +54,14 @@ export async function fetchDetails(id: number): Promise<ArtistDetails | null> {
   return promise;
 }
 
+/** Search is navigation: reveal the artist in place, adding an unseen orb if needed. */
+export async function navigateToArtist(ref: ArtistRef): Promise<void> {
+  useUi.getState().setNavPanel(null);
+  useHistory.getState().visit(ref);
+  void fetchDetails(ref.id);
+  await canvas.revealArtist(ref);
+}
+
 /** Seed the canvas from a search result (accent fetched alongside details). */
 export async function seedFromSearch(ref: ArtistRef): Promise<void> {
   const details = await fetchDetails(ref.id);

@@ -2,13 +2,12 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import type { ArtistRef } from "@/lib/types";
-import { seedFromSearch } from "@/store/actions";
-import { canvas } from "@/lib/canvas-controller";
+import { navigateToArtist } from "@/store/actions";
 import { useArtistSearch } from "@/hooks/useArtistSearch";
 import { SearchIcon } from "./Icons";
 
 interface ArtistSearchProps {
-  variant: "hero" | "bar" | "panel" | "context";
+  variant: "hero" | "bar" | "panel" | "context" | "discovery";
   placeholder?: string;
   autoFocus?: boolean;
   label?: string;
@@ -32,8 +31,8 @@ export default function ArtistSearch({ variant, placeholder = "Search an artist�
   const expanded = open && searching && !selected;
   const canPick = !loading && !error && !selected;
   const activeArtist = canPick ? results[active] : undefined;
-  const status = selected ? `Opening ${selected.name}…` : pickError || error ||
-    (searching ? loading ? "Finding artists…" : results.length ? `${results.length} artists found` : `No artists found for “${query.trim()}”. Try another name.` : query ? "Type at least 2 characters" : "Search for an artist you love");
+  const status = selected ? `Flying to ${selected.name}…` : pickError || error ||
+    (searching ? loading ? "Finding artists…" : results.length ? `${results.length} artists found` : `No artists found for “${query.trim()}”. Try another name.` : query ? "Type at least 2 characters" : "");
 
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
@@ -55,8 +54,7 @@ export default function ArtistSearch({ variant, placeholder = "Search an artist�
     try {
       if (onPick) await onPick(artist);
       else {
-        await seedFromSearch(artist);
-        requestAnimationFrame(() => canvas.fitAll());
+        await navigateToArtist(artist);
       }
       setQuery("");
       setOpen(false);
@@ -104,7 +102,7 @@ export default function ArtistSearch({ variant, placeholder = "Search an artist�
           setQuery(""); setActive(-1); setPickError(""); inputRef.current?.focus();
         }}>×</button>}
       </div>
-      <p id={`${id}-status`} className="search-status" role="status">{status}</p>
+      <span id={`${id}-status`} className="sr-only" role="status">{status}</span>
       {expanded && <div className="search-results glass scrollbar-slim">
         <div id={`${id}-results`} role="listbox" aria-label="Artists" aria-busy={loading} className={loading ? "search-updating" : undefined}>
           {results.map((artist, i) => <div key={artist.id} id={`${id}-option-${artist.id}`} role="option"

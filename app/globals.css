@@ -2605,7 +2605,6 @@ button.bridge-row {
 .discovery-search input::placeholder { color: var(--color-neutral-400); }
 .discovery-search input::-webkit-search-cancel-button { display: none; }
 .discovery-search button { flex-shrink: 0; width: 32px; height: 36px; font-size: 22px; cursor: pointer; border-radius: 50%; }
-.discovery-guidance { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 14px; margin-top: 10px; font-size: 10px; color: var(--color-neutral-400); }
 .discovery-action { pointer-events: auto; min-height: 32px; padding: 4px; border-radius: 4px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .discovery-status { color: var(--color-neutral-300); font-size: 12px; text-align: center; max-width: 420px; }
 .discovery-status:not(:empty) { margin-bottom: 12px; }
@@ -2624,7 +2623,6 @@ button.bridge-row {
 .discovery.is-entering .discovery-surface,
 .discovery.is-entering .discovery-results { opacity: 0; pointer-events: none; }
 .discovery.is-entering .discovery-header { opacity: 0.2; }
-.discovery.is-entering .discovery-guidance { visibility: hidden; }
 @media (max-width: 600px) {
   .discovery-header { padding-top: 24px; padding-bottom: 45px; background: linear-gradient(var(--color-neutral-950) 15%, color-mix(in srgb, var(--color-neutral-950) 93.33%, transparent) 65%, transparent); }
   .discovery-header p { max-width: 220px; margin-inline: auto; line-height: 1.5; }
@@ -2632,7 +2630,6 @@ button.bridge-row {
   .discovery-name { font-size: 11px; }
   .discovery-footer { padding-inline: 12px; }
   .discovery-search input { font-size: 16px; }
-  .discovery-guidance { font-size: 9px; column-gap: 8px; }
   .discovery-results { inset-block: 140px 155px; padding: 16px 6px; }
   .discovery-result-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 20px 0; }
   .discovery-results .discovery-artist { width: 120px; --artist-size: 88px; }
@@ -2647,7 +2644,6 @@ button.bridge-row {
 .search-clear { flex-shrink: 0; width: 28px; height: 28px; border-radius: 7px; color: var(--ink-dim); font-size: 20px; cursor: pointer; }
 .search-clear:hover { background: #ffffff12; color: var(--ink); }
 .search-clear:focus-visible, .search-retry:focus-visible { outline: 2px solid var(--color-neutral-300); outline-offset: 2px; }
-.search-status { margin-top: 10px; color: var(--ink-dim); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .search-results { overscroll-behavior: contain; }
 .search-result { min-height: 56px; }
 .search-result[aria-disabled="true"] { cursor: default; }
@@ -2694,3 +2690,13 @@ button.bridge-row {
 @media (forced-colors: active) {
   .artist-search .search-field:focus-within, .discovery-search:focus-within { outline: 2px solid Highlight; }
 }
+
+/* A small navigator keeps the discovery field visible throughout search. */
+.artist-search.is-discovery { width: min(390px, calc(100vw - 32px)); pointer-events: auto; }
+.is-discovery .search-field { min-height: 48px; border-radius: 25px; background: #171717f2; padding-inline: 16px 10px; }
+.is-discovery .search-field input { font-size: 16px; }
+.is-discovery .search-results { top: auto; bottom: calc(100% + 12px); max-height: min(380px, calc(100dvh - 245px)); background: #141414f5; box-shadow: 0 12px 48px #0008, 0 0 0 1px #ffffff12; border-radius: 18px; }
+.is-discovery .search-result { min-height: 52px; }
+.is-discovery .search-result small { display: none; }
+.discovery-node:has(.discovery-artist:focus-visible) { z-index: 2; }
+.discovery-node .discovery-artist:focus-visible { border-radius: 18px; outline-offset: 8px; }

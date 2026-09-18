@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import { useReducedMotion } from "motion/react";
 import { canvas } from "@/lib/canvas-controller";
 import { resolveWheelGesture } from "@/lib/canvas-gestures";
-import { discoveryCells, type DiscoveryCell } from "@/lib/discovery-field";
+import { discoveryCells, discoverySearchTarget, type DiscoveryCell } from "@/lib/discovery-field";
 import { createIntroRun, playLanding, playWavefront, WAVEFRONT_BASE_RADIUS, type IntroRun } from "@/lib/discovery-intro";
 import catalogue from "@/lib/discovery-artists.json";
 import type { ArtistRef } from "@/lib/types";
@@ -15,8 +15,7 @@ import { useHistory } from "@/store/history";
 import { useUi } from "@/store/ui";
 import { primeSplitAudio } from "@/lib/split-audio";
 import ArtistOrbMenu, { type OrbAction, type OrbMenuOrigin } from "./ArtistOrbMenu";
-import { SearchIcon } from "./Icons";
-import { useArtistSearch } from "@/hooks/useArtistSearch";
+import ArtistSearch from "./ArtistSearch";
 
 /* Canvas handoff: surrounding portraits shrink/fade for 400ms, with a
  * 0/30/60ms stagger. The selected portrait holds still; exploration starts
@@ -46,13 +45,11 @@ function Discovery() {
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState(false);
   const [canvasMoving, setCanvasMoving] = useState(false);
-  const [query, setQuery] = useState("");
   const [error, setError] = useState("");
-  const { results, loading, error: searchError, retry } = useArtistSearch(query);
-  const resultsRef = useRef<HTMLElement>(null);
+  const [searchSlots, setSearchSlots] = useState<Record<string, ArtistRef>>({});
+  const slotsRef = useRef<Record<string, ArtistRef>>({});
+  const cancelFlight = useRef<(() => void) | null>(null);
   const [selected, setSelected] = useState<{ artist: ArtistRef; x: number; y: number; size: number } | null>(null);
-  const q = query.trim();
-  const searching = q.length >= 2;
   const cells = discoveryCells(camera, viewport, catalogue.length);
   const viewportRef = useRef(viewport);
   const measured = viewport.width > 0;
@@ -83,6 +80,7 @@ function Discovery() {
 
   const pan = (x: number, y: number) => {
     if (x === 0 && y === 0) return;
+    cancelFlight.current?.();
     setCanvasMoving(true);
     if (headerIdleTimer.current !== null) clearTimeout(headerIdleTimer.current);
     headerIdleTimer.current = setTimeout(() => {
@@ -100,6 +98,7 @@ function Discovery() {
     alive.current = true;
     const element = surface.current!;
     const observer = new ResizeObserver(([entry]) => {
+      cancelFlight.current?.();
       viewportRef.current = { width: entry.contentRect.width, height: entry.contentRect.height };
       setViewport(viewportRef.current);
     });
@@ -115,6 +114,7 @@ function Discovery() {
     element.addEventListener("wheel", onWheel, { passive: false });
     return () => {
       alive.current = false;
+      cancelFlight.current?.();
       observer.disconnect();
       element.removeEventListener("wheel", onWheel);
       cancelAnimationFrame(frame.current);
@@ -123,9 +123,45 @@ function Discovery() {
     };
   }, []);
 
-  const changeQuery = (value: string) => {
-    setQuery(value);
+  const flyToArtist = (artist: ArtistRef): Promise<void> => {
+    cancelFlight.current?.();
+    const savedKey = Object.keys(slotsRef.current).find((key) => slotsRef.current[key].id === artist.id);
+    const index = catalogue.findIndex((entry) => entry.id === artist.id);
+    const target = discoverySearchTarget(cameraRef.current, viewportRef.current, catalogue.length, index, new Set(Object.keys(slotsRef.current)), savedKey);
+    if (index < 0 && !savedKey) {
+      slotsRef.current = { ...slotsRef.current, [target.key]: artist };
+      setSearchSlots(slotsRef.current);
+    }
+    const image = new Image();
+    image.src = artist.picture;
     setError("");
+    setCanvasMoving(true);
+    const from = { ...cameraRef.current };
+    const distance = Math.hypot(target.x + from.x, target.y + from.y);
+    const duration = reducedMotion ? 0 : Math.min(1500, Math.max(650, distance * 0.55));
+    const start = performance.now();
+    return new Promise((resolve) => {
+      let flightFrame = 0;
+      const finish = () => { cancelAnimationFrame(flightFrame); cancelFlight.current = null; setCanvasMoving(false); resolve(); };
+      cancelFlight.current = finish;
+      const tick = (now: number) => {
+        const t = duration ? Math.min(1, (now - start) / duration) : 1;
+        const eased = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        cameraRef.current = { x: from.x + (-target.x - from.x) * eased, y: from.y + (-target.y - from.y) * eased };
+        setCamera(cameraRef.current);
+        if (t < 1) flightFrame = requestAnimationFrame(tick);
+        else {
+          finish();
+          useHistory.getState().visit(artist);
+          requestAnimationFrame(() => {
+            if (!alive.current) return;
+            const element = surface.current?.querySelector<HTMLButtonElement>(`[data-discovery-cell="${target.key}"] button`);
+            element?.focus({ preventScroll: true });
+          });
+        }
+      };
+      flightFrame = requestAnimationFrame(tick);
+    });
   };
 
   const pick = async (artist: ArtistRef, element: HTMLElement) => {
@@ -173,11 +209,6 @@ function Discovery() {
     }
   };
 
-  const clearSearch = () => {
-    changeQuery("");
-    document.getElementById("discovery-search")?.focus();
-  };
-
   return (
     <main className="discovery left-0!" aria-busy={transitioning}>
       <div
@@ -186,9 +217,10 @@ function Discovery() {
         role="region"
         aria-label="Artist discovery canvas"
         tabIndex={0}
-        inert={searching || selected !== null}
+        inert={selected !== null}
         onPointerDown={(event) => {
           if (event.button !== 0 || drag.current || entering.current) return;
+          cancelFlight.current?.();
           didDrag.current = false;
           drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, startX: event.clientX, startY: event.clientY };
         }}
@@ -229,7 +261,7 @@ function Discovery() {
         <div className="discovery-world" data-intro={introPending ? "pending" : undefined} style={{ transform: `translate3d(${camera.x + viewport.width / 2}px, ${camera.y + viewport.height / 2}px, 0)` }}>
           {intro?.params.ripple.enabled && <Wavefront run={intro} />}
           {cells.map((cell, index) => {
-            const artist = catalogue[cell.index];
+            const artist = searchSlots[cell.key] ?? catalogue[cell.index];
             const sx = cell.x + camera.x + viewport.width / 2;
             const sy = cell.y + camera.y + viewport.height / 2;
             const reachable = sx > cell.size / 2 && sx < viewport.width - cell.size / 2 && sy > 170 && sy < viewport.height - 130;
@@ -247,50 +279,9 @@ function Discovery() {
         <p>Choose an artist. Follow the connections.</p>
       </header>
 
-      {searching && (
-        <section ref={resultsRef} className={`discovery-results transition-opacity duration-400 motion-reduce:transition-none ${transitioning ? "opacity-0" : "opacity-100"}`} aria-label="Artist search results" aria-busy={loading} inert={selected !== null}
-          onKeyDown={(event) => {
-            if (event.nativeEvent.isComposing) return;
-            if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); clearSearch(); return; }
-            const direction = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
-            if (!direction) return;
-            const buttons = Array.from(resultsRef.current?.querySelectorAll<HTMLButtonElement>(".discovery-artist:not(:disabled)") ?? []);
-            const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
-            if (index < 0 || !buttons.length) return;
-            event.preventDefault(); event.stopPropagation();
-            buttons[(index + direction + buttons.length) % buttons.length]?.focus();
-          }}>
-          <div className="discovery-results-heading"><span>Find your next starting point</span><span>{loading ? "Searching…" : `${results.length} ${results.length === 1 ? "artist" : "artists"}`}</span></div>
-          <div className={`discovery-result-grid ${loading ? "is-updating" : ""}`}>
-            {results.map((artist) => <ArtistButton key={artist.id} artist={artist} onPick={pick} departing={transitioning} disabled={loading || !!searchError} />)}
-            {loading && !results.length && [0, 1, 2, 3].map((n) => <div className="discovery-result-skeleton" key={n} aria-hidden="true"><span /><i /></div>)}
-          </div>
-          {!loading && !searchError && !results.length && <div className="discovery-search-message"><SearchIcon size={24} /><p>No artists found for “{q}”</p><span>Try a different spelling or a shorter name.</span></div>}
-          {searchError && <div className="discovery-search-message"><p>{searchError}</p><button className="discovery-action" onClick={retry}>Try again</button></div>}
-        </section>
-      )}
-
-      <footer className={`discovery-footer bg-none! bg-transparent! transition-opacity duration-400 motion-reduce:transition-none ${transitioning ? "opacity-0" : "opacity-100"}`}>
-        <p className="discovery-status" role="status">{transitioning && selected ? `Opening ${selected.artist.name}…` : error || searchError || (searching ? (loading ? "Finding your artist…" : `${results.length} artists found`) : query ? "Type at least 2 characters" : "")}</p>
-        <form className="discovery-search bg-neutral-900/95! shadow-none! ring-1 ring-white/20 text-neutral-400! focus-within:ring-2 focus-within:ring-neutral-300 [&_input]:text-neutral-100! [&_input]:placeholder:text-neutral-400! [&_button]:focus-visible:outline-neutral-300!" role="search" onSubmit={(event) => {
-          event.preventDefault();
-          if (!loading && !error && !searchError && searching) resultsRef.current?.querySelector<HTMLButtonElement>(".discovery-artist:not(:disabled)")?.click();
-        }}>
-          <SearchIcon size={16} />
-          <label className="sr-only" htmlFor="discovery-search">Find an artist</label>
-          <input id="discovery-search" data-omni-search type="search" autoComplete="off" placeholder="Find an artist…" value={query} disabled={selected !== null} onChange={(event) => changeQuery(event.target.value)} onKeyDown={(event) => {
-            if (event.nativeEvent.isComposing) { if (event.key === "Enter") event.preventDefault(); return; }
-            if (event.key === "Escape") { event.stopPropagation(); clearSearch(); }
-            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-              event.preventDefault();
-              const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>(searching ? ".discovery-results .discovery-artist:not(:disabled)" : '.discovery-surface .discovery-artist[tabindex="0"]'));
-              buttons[event.key === "ArrowDown" ? 0 : buttons.length - 1]?.focus();
-            }
-          }} />
-          {loading && <span className="search-spinner" aria-hidden="true" />}
-          {query && <button type="button" onClick={clearSearch} disabled={selected !== null} aria-label="Clear artist search">×</button>}
-        </form>
-        <p className="discovery-guidance">{searching ? "↑ ↓ Browse artists · Enter to explore · Esc to clear" : "Press / to search for an artist"}</p>
+      <footer className={`discovery-footer bg-none! bg-transparent! transition-opacity duration-400 motion-reduce:transition-none ${transitioning ? "opacity-0" : "opacity-100"}`} inert={selected !== null}>
+        <p className="discovery-status" role="status">{error}</p>
+        <ArtistSearch variant="discovery" label="Find an artist" placeholder="Find an artist…" onPick={flyToArtist} />
       </footer>
 
       {selected && !transitioning && <ArtistOrbMenu key={selected.artist.id} selection={selected} onDismiss={dismiss} onAction={enter} />}
@@ -331,7 +322,7 @@ function LandingNode({ cell, run, style, children }: { cell: DiscoveryCell; run:
   }, [run, key, x, y]);
   const rings = run?.params.splash.enabled ? run.params.splash.rings : 0;
   return (
-    <div ref={node} className="discovery-node" style={style}>
+    <div ref={node} data-discovery-cell={cell.key} className="discovery-node" style={style}>
       {children}
       {Array.from({ length: rings }, (_, i) => <span key={i} className="discovery-splash" aria-hidden="true" style={{ "--splash-width": `${run!.params.splash.width}px` } as CSSProperties} />)}
     </div>

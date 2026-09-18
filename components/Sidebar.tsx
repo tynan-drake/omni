@@ -145,8 +145,7 @@ function SearchPanel() {
       <div className="nav-flyout-body">
         <ArtistSearch variant="panel" placeholder="Search any artist…" autoFocus />
         <p className="nav-flyout-note">
-          Pick an artist to drop them on the canvas, then expand backward to their
-          roots or forward to who they shaped.
+          Find an artist and fly to their place in the universe.
         </p>
       </div>
     </>

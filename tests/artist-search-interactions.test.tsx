@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import ArtistSearch from "../components/ArtistSearch";
 
-vi.mock("@/store/actions", () => ({ seedFromSearch: vi.fn() }));
+vi.mock("@/store/actions", () => ({ navigateToArtist: vi.fn() }));
 vi.mock("@/lib/canvas-controller", () => ({ canvas: { fitAll: vi.fn() } }));
 const artists = [{ id: 1, name: "First artist", picture: "photo", pictureBig: "photo" }, { id: 2, name: "Second artist", picture: "photo", pictureBig: "photo" }];
 const tick = () => act(async () => { await vi.advanceTimersByTimeAsync(200); });

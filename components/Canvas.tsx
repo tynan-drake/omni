@@ -1,5 +1,6 @@
 "use client";
 
+import { searchArrivalPoint } from "@/lib/search-flight";
 import { neutralizePurple } from "@/lib/color-utils";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -26,6 +27,7 @@ import {
   restorePositions,
   setTimelineTargets,
   syncGraph,
+  stageSearchPosition,
 } from "@/lib/simulation";
 import {
   makeSplitBudPlans,
@@ -163,11 +165,14 @@ export default function Canvas() {
     const sel = select(container);
     sel.call(behavior);
 
+    let cancelSearchFlight: (() => void) | null = null;
     const onWheelPan = (event: WheelEvent) => {
       const gesture = resolveWheelGesture(event, container.clientHeight);
       if (gesture.kind === "zoom") return;
       event.preventDefault();
       if (!gesture.deltaX && !gesture.deltaY) return;
+      cancelSearchFlight?.();
+      sel.interrupt();
       const { k } = transformRef.current;
       sel.call(
         behavior.translateBy,
@@ -232,7 +237,7 @@ export default function Canvas() {
       const k = Math.max(transformRef.current.k, 1);
       const c = viewCentre();
       const t = zoomIdentity.translate(c.x - k * p.x, c.y - k * p.y).scale(k);
-      sel.transition().duration(650).call(behavior.transform, t);
+      sel.interrupt().transition().duration(window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 850).call(behavior.transform, t);
     };
 
     const zoomBy = (factor: number) => {
@@ -250,6 +255,49 @@ export default function Canvas() {
     };
 
     registerCanvasController({
+      revealArtist: async (artist) => {
+        cancelSearchFlight?.();
+        sel.interrupt();
+        const graph = useGraph.getState();
+        if (!graph.nodes[artist.id]) {
+          const radius = orbSize({ kind: "seed", generation: 0 }) * useOrbDials.getState().sizeScale / 2;
+          const point = searchArrivalPoint(transformRef.current, container.getBoundingClientRect(), getPositions().values(), radius);
+          stageSearchPosition(artist.id, point);
+          setDiscoverySeed(artist.id);
+          graph.addSeed({ ...artist, accent: "#a3a3a3" });
+        } else graph.select(artist.id);
+        await new Promise<void>((resolve) => {
+          let frame = 0;
+          let attempts = 0;
+          let settled = false;
+          const finish = () => {
+            if (settled) return;
+            settled = true;
+            cancelAnimationFrame(frame);
+            cancelSearchFlight = null;
+            resolve();
+          };
+          cancelSearchFlight = () => { sel.interrupt(); finish(); };
+          const start = () => {
+            if (!useGraph.getState().nodes[artist.id]) { finish(); return; }
+            const position = getPositions().get(artist.id);
+            const orb = getOrbEls().get(artist.id);
+            if (!position || !orb) {
+              if (++attempts < 120) frame = requestAnimationFrame(start);
+              else finish();
+              return;
+            }
+            const k = Math.min(Math.max(transformRef.current.k, 0.85), 1.25);
+            const center = viewCentre();
+            const target = zoomIdentity.translate(center.x - k * position.x, center.y - k * position.y).scale(k);
+            const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            const arrive = () => { orb.focus({ preventScroll: true }); finish(); };
+            if (reduced) { sel.call(behavior.transform, target); arrive(); }
+            else sel.transition().duration(1100).call(behavior.transform, target).on("end.search", arrive).on("interrupt.search cancel.search", finish);
+          };
+          frame = requestAnimationFrame(start);
+        });
+      },
       adoptDiscovery: (nodeId, x, y, size) => {
         // Keep the selected portrait's screen position and diameter at handoff.
         const diameter = orbSize({ kind: "seed", generation: 0 }) * useOrbDials.getState().sizeScale;
@@ -274,6 +322,8 @@ export default function Canvas() {
 
     return () => {
       unsubscribe();
+      cancelSearchFlight?.();
+      sel.interrupt();
       cancelAnimationFrame(initRaf);
       container.removeEventListener("wheel", onWheelPan);
       sel.on(".zoom", null);
