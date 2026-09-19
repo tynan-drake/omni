@@ -23,6 +23,22 @@ export interface ArtistRef {
   pictureBig: string;
 }
 
+export interface DeezerSearchResult extends ArtistRef {
+  source?: "deezer";
+  fans?: number;
+}
+
+export interface SpotifySearchResult {
+  id: string;
+  source: "spotify";
+  name: string;
+  picture: string;
+  pictureBig: string;
+  spotifyUrl: string;
+}
+
+export type ArtistSearchResult = DeezerSearchResult | SpotifySearchResult;
+
 export interface Track {
   id: number;
   title: string;

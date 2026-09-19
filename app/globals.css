@@ -2697,6 +2697,14 @@ button.bridge-row {
 .is-discovery .search-field input { font-size: 16px; }
 .is-discovery .search-results { top: auto; bottom: calc(100% + 12px); max-height: min(380px, calc(100dvh - 245px)); background: #141414f5; box-shadow: 0 12px 48px #0008, 0 0 0 1px #ffffff12; border-radius: 18px; }
 .is-discovery .search-result { min-height: 52px; }
-.is-discovery .search-result small { display: none; }
+.is-discovery .search-result small { display: block; }
 .discovery-node:has(.discovery-artist:focus-visible) { z-index: 2; }
 .discovery-node .discovery-artist:focus-visible { border-radius: 18px; outline-offset: 8px; }
+
+
+.search-pick-error { color: var(--ink-dim); font-size: 12px; line-height: 1.5; margin-top: 10px; }
+.search-source-links { display: flex; flex-wrap: wrap; gap: 8px 12px; padding: 10px; border-top: 1px solid #ffffff12; }
+.search-source-links a { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: var(--ink-dim); }
+.search-source-links a:focus-visible { outline: 2px solid var(--color-neutral-300); outline-offset: 3px; }
+.search-result.is-spotify .search-portrait, .search-result.is-spotify .search-portrait img { border-radius: 4px; }
+.search-result.is-spotify .search-portrait img { object-fit: contain; }

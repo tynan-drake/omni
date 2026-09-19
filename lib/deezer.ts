@@ -1,4 +1,4 @@
-import type { ArtistRef, Track } from "./types";
+import type { ArtistRef, DeezerSearchResult, Track } from "./types";
 
 const BASE = "https://api.deezer.com";
 
@@ -76,23 +76,34 @@ function toTrack(t: DeezerTrack): Track {
 /** Deezer's placeholder portrait. */
 const PLACEHOLDER_IMG = /d41d8cd98f00b204e9800998ecf8427e|\/artist\/\//;
 
-/** Prefer name matches without burying smaller artists or missing portraits. */
-export async function searchArtists(q: string, limit = 8): Promise<ArtistRef[]> {
+const normalizeArtistName = (value: string) => value.normalize("NFKD")
+  .replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/** Name affinity leads; audience size disambiguates names and broad prefixes. */
+function searchScore(artist: DeezerArtist, query: string): number {
+  const name = normalizeArtistName(artist.name);
+  const words = name.split(" ");
+  const match = name === query ? 8 : name.startsWith(query + " ") ? 6 :
+    words.includes(query) ? 5.5 : name.startsWith(query) ? 5 : name.includes(query) ? 3 : -100;
+  const popularity = Math.min(7, Math.log10(1 + Math.max(0, artist.nb_fan ?? 0)));
+  const derivative = /\b(tribute|karaoke|cover band)\b/;
+  const penalty = derivative.test(name) && !derivative.test(query) ? 5 : 0;
+  return match + popularity - penalty;
+}
+
+export async function searchArtists(q: string, limit = 8): Promise<DeezerSearchResult[]> {
+  const query = normalizeArtistName(q);
+  if (!query) return [];
   const json = await dz<DeezerList<DeezerArtist>>(
-    `/search/artist?q=${encodeURIComponent(q)}&limit=${Math.max(limit * 2, 10)}`,
+    `/search/artist?q=${encodeURIComponent(q)}&limit=100`,
     3600
   );
-  const normalize = (value: string) => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
-  const query = normalize(q);
-  const rank = (name: string) => {
-    const value = normalize(name);
-    return value === query ? 0 : value.startsWith(query) ? 1 : value.includes(query) ? 2 : 3;
-  };
-  return (json.data ?? [])
+  const ranked = (json.data ?? [])
     .filter((artist, index, artists) => artists.findIndex((other) => other.id === artist.id) === index)
-    .sort((a, b) => rank(a.name) - rank(b.name))
+    .sort((a, b) => searchScore(b, query) - searchScore(a, query))
     .slice(0, limit)
-    .map(toArtistRef);
+    .map((artist) => ({ ...toArtistRef(artist), ...(artist.nb_fan === undefined ? {} : { fans: artist.nb_fan }) }));
+  return ranked;
 }
 
 export async function getArtist(id: number): Promise<ArtistRef & { fans: number }> {

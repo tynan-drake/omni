@@ -16,6 +16,7 @@ import { useUi } from "@/store/ui";
 import { primeSplitAudio } from "@/lib/split-audio";
 import ArtistOrbMenu, { type OrbAction, type OrbMenuOrigin } from "./ArtistOrbMenu";
 import ArtistSearch from "./ArtistSearch";
+import DiscoveryLens from "./DiscoveryLens";
 
 /* Canvas handoff: surrounding portraits shrink/fade for 400ms, with a
  * 0/30/60ms stagger. The selected portrait holds still; exploration starts
@@ -213,7 +214,7 @@ function Discovery() {
     <main className="discovery left-0!" aria-busy={transitioning}>
       <div
         ref={surface}
-        className={`discovery-surface ${dragging ? "is-dragging" : ""}`}
+        className={`discovery-surface isolate z-0 ${dragging ? "is-dragging" : ""}`}
         role="region"
         aria-label="Artist discovery canvas"
         tabIndex={0}
@@ -272,6 +273,7 @@ function Discovery() {
             );
           })}
         </div>
+        <DiscoveryLens />
       </div>
 
       <header className={`discovery-header bg-radial! from-black/95 from-15% via-black/75 via-40% to-transparent to-75% max-sm:bg-linear-to-b! transition-opacity! ease-out motion-reduce:transition-none! ${transitioning || canvasMoving ? "opacity-0! duration-200!" : selected ? "opacity-20! duration-700!" : "opacity-100! duration-700!"}`}>
