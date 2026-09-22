@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import type { ArtistRef, ArtistSearchResult } from "@/lib/types";
 import { navigateToArtist } from "@/store/actions";
 import { useArtistSearch } from "@/hooks/useArtistSearch";
@@ -12,13 +12,16 @@ interface ArtistSearchProps {
   autoFocus?: boolean;
   label?: string;
   excludeId?: number;
+  idleContent?: ReactNode;
+  onQueryChange?: (query: string) => void;
   onPick?: (artist: ArtistRef) => void | Promise<void>;
 }
 
 export default function ArtistSearch({ variant, placeholder = "Search an artistâ€¦", autoFocus,
-  label = "Search artists", excludeId, onPick }: ArtistSearchProps) {
+  label = "Search artists", excludeId, onPick, onQueryChange, idleContent }: ArtistSearchProps) {
   const id = useId();
   const [query, setQuery] = useState("");
+  const updateQuery = (value: string) => { setQuery(value); onQueryChange?.(value); };
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [selected, setSelected] = useState<ArtistSearchResult | null>(null);
@@ -69,7 +72,7 @@ export default function ArtistSearch({ variant, placeholder = "Search an artistâ
       else {
         await navigateToArtist(resolved);
       }
-      setQuery("");
+      updateQuery("");
       setOpen(false);
       setActive(-1);
     } catch {
@@ -93,13 +96,13 @@ export default function ArtistSearch({ variant, placeholder = "Search an artistâ
           aria-activedescendant={expanded && activeArtist ? `${id}-option-${activeArtist.id}` : undefined}
           aria-describedby={`${id}-status`} autoComplete="off" value={query} placeholder={placeholder}
           spellCheck={false} autoFocus={autoFocus} readOnly={!!selected}
-          onChange={(e) => { setQuery(e.target.value); setActive(-1); setOpen(true); setPickError(""); setSource("auto"); }}
+          onChange={(e) => { updateQuery(e.target.value); setActive(-1); setOpen(true); setPickError(""); setSource("auto"); }}
           onFocus={() => setOpen(true)} onKeyDown={(e) => {
             if (e.nativeEvent.isComposing) return;
             if (e.key === "Escape" && (open || query)) {
               e.preventDefault(); e.stopPropagation();
               if (open && searching) setOpen(false);
-              else { setQuery(""); setOpen(false); }
+              else { updateQuery(""); setOpen(false); }
               return;
             }
             if ((e.key === "ArrowDown" || e.key === "ArrowUp") && canPick && results.length) {
@@ -112,12 +115,13 @@ export default function ArtistSearch({ variant, placeholder = "Search an artistâ
           }} />
         {(loading || selected) && <span className="search-spinner" aria-hidden="true" />}
         {query && !selected && <button type="button" className="search-clear" aria-label="Clear artist search" onClick={() => {
-          setQuery(""); setActive(-1); setPickError(""); inputRef.current?.focus();
+          updateQuery(""); setActive(-1); setPickError(""); inputRef.current?.focus();
         }}>Ã—</button>}
       </div>
       <span id={`${id}-status`} className="sr-only" role="status">{status}</span>
       {pickError && <div className="search-pick-error"><p>{pickError}</p>{source !== "deezer" && <button type="button" className="search-retry" onClick={() => { setSource("deezer"); setPickError(""); setActive(-1); setOpen(true); inputRef.current?.focus(); }}>Search directly</button>}</div>}
-      {expanded && <div className="search-results glass scrollbar-slim">
+      {open && !query.trim() && !selected && idleContent && <div className="search-results search-idle glass scrollbar-slim" style={{ backdropFilter: "blur(40px) saturate(120%)", WebkitBackdropFilter: "blur(40px) saturate(120%)" }}>{idleContent}</div>}
+      {expanded && <div className="search-results glass scrollbar-slim" style={{ backdropFilter: "blur(40px) saturate(120%)", WebkitBackdropFilter: "blur(40px) saturate(120%)" }}>
         <div id={`${id}-results`} role="listbox" aria-label="Artists" aria-busy={loading} className={loading ? "search-updating" : undefined}>
           {results.map((artist, i) => <div key={artist.id} id={`${id}-option-${artist.id}`} role="option"
             aria-selected={activeArtist?.id === artist.id} aria-disabled={!canPick}

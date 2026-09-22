@@ -27,10 +27,12 @@ const DEPARTURE_STAGGER = ["delay-0!", "delay-[30ms]!", "delay-[60ms]!"];
 export default function Landing() {
   const hasNodes = useGraph((s) => s.order.length > 0);
   const hydrated = useGraph((s) => s.hydrated);
-  return hydrated && !hasNodes ? <Discovery /> : null;
+  const discoveryOpen = useUi((s) => s.discoveryOpen);
+  return hydrated && (!hasNodes || discoveryOpen) ? <Discovery /> : null;
 }
 
 function Discovery() {
+  const hasExploration = useGraph((s) => s.order.length > 0);
   const reducedMotion = useReducedMotion();
   const surface = useRef<HTMLDivElement>(null);
   const cameraRef = useRef({ x: 0, y: 0 });
@@ -194,6 +196,7 @@ function Discovery() {
       canvas.adoptDiscovery(artist.id, origin.x, origin.y, origin.size);
       useGraph.getState().addSeed({ ...artist, accent: details?.accent ?? "#a3a3a3" });
       useHistory.getState().visit(artist);
+      useUi.getState().resumeExploration();
       requestAnimationFrame(() => {
         if (!useGraph.getState().nodes[artist.id]) return;
         if (action === "back" || action === "forward") {
@@ -212,6 +215,10 @@ function Discovery() {
 
   return (
     <main className="discovery left-0!" aria-busy={transitioning}>
+      {hasExploration && <button type="button" className="exploration-home resume-exploration glass" disabled={transitioning} inert={selected !== null} onClick={() => {
+        useUi.getState().resumeExploration();
+        requestAnimationFrame(() => document.querySelector<HTMLButtonElement>("[data-exploration-home]")?.focus());
+      }}>Resume exploration <span aria-hidden="true">↗</span></button>}
       <div
         ref={surface}
         className={`discovery-surface isolate z-0 ${dragging ? "is-dragging" : ""}`}

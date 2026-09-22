@@ -1,206 +1,98 @@
 "use client";
 
-import { useEffect } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { canvas } from "@/lib/canvas-controller";
-import { seedFromSearch } from "@/store/actions";
+import { useEffect, useRef, useState } from "react";
+import { navigateToArtist } from "@/store/actions";
 import { useGraph } from "@/store/graph";
 import { hydrateHistory, useHistory } from "@/store/history";
-import { useUi, type NavPanel } from "@/store/ui";
+import { useUi } from "@/store/ui";
 import ArtistSearch from "./ArtistSearch";
 import BridgePanel from "./BridgePanel";
-import { AudioIcon, BridgeIcon, HelpIcon, HistoryIcon, NavSearchIcon } from "./Icons";
+import { CloseIcon, PlaylistIcon } from "./Icons";
 
-/** Persistent left nav rail: brand/home, workflow tools, help pinned to the foot. */
+/** Stable Home anchor and the two primary exploration actions. */
 export default function Sidebar() {
   const hasNodes = useGraph((s) => s.order.length > 0);
   const navPanel = useUi((s) => s.navPanel);
   const playlistOpen = useUi((s) => s.playlistOpen);
-  const toggleNavPanel = useUi((s) => s.toggleNavPanel);
+  const search = useRef<HTMLDivElement>(null);
 
   useEffect(hydrateHistory, []);
+  useEffect(() => {
+    if (navPanel === "search") {
+      search.current?.querySelector<HTMLInputElement>("input")?.focus();
+      useUi.getState().setNavPanel(null);
+    }
+  }, [navPanel]);
 
   if (!hasNodes) return null;
-
-  const goHome = () => {
-    useGraph.getState().reset();
-    useUi.getState().closeAll();
+  const closePanel = () => {
+    useUi.getState().setNavPanel(null);
+    if (navPanel === "bridges") useUi.getState().cancelConnecting();
+    search.current?.querySelector<HTMLInputElement>("input")?.focus();
   };
 
   return (
     <>
-      <nav className="nav-rail" aria-label="Main">
-        <button
-          className="nav-logo"
-          title="Home — back to the start"
-          aria-label="Home"
-          onClick={goHome}
-        >
-          O
-        </button>
+      <button type="button" className="exploration-home glass" data-exploration-home onClick={() => {
+        useUi.getState().showDiscovery();
+        requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(".resume-exploration")?.focus());
+      }}>
+        <span className="home-wordmark" aria-hidden="true">O</span> Home
+      </button>
 
-        <div className="nav-tools">
-          <NavButton
-            panel="search"
-            active={navPanel === "search"}
-            label="Search artists  ( / )"
-            onClick={() => toggleNavPanel("search")}
-          >
-            <NavSearchIcon />
-          </NavButton>
-          <NavButton
-            panel="recent"
-            active={navPanel === "recent"}
-            label="Recent artists"
-            onClick={() => toggleNavPanel("recent")}
-          >
-            <HistoryIcon />
-          </NavButton>
-          <NavButton
-            panel="bridges"
-            active={navPanel === "bridges"}
-            label="Artist bridges"
-            onClick={() => toggleNavPanel("bridges")}
-          >
-            <BridgeIcon />
-          </NavButton>
-          <NavButton
-            active={playlistOpen}
-            label="Playlist from this universe  ( P )"
-            onClick={() => {
-              useUi.getState().setNavPanel(null);
-              useUi.getState().setPlaylistOpen(!playlistOpen);
-            }}
-          >
-            <AudioIcon />
-          </NavButton>
-        </div>
+      <button type="button" className={`exploration-playlist dock-action glass ${playlistOpen ? "is-active" : ""}`}
+        aria-expanded={playlistOpen} aria-controls={playlistOpen ? "playlist-builder" : undefined}
+        title="Create playlist (P)" onClick={() => useUi.getState().setPlaylistOpen(!playlistOpen)}>
+        <PlaylistIcon size={18} /> Create playlist
+      </button>
 
-        <div className="nav-foot">
-          <NavButton
-            label="Help & keyboard shortcuts  ( ? )"
-            onClick={() => useUi.getState().setShortcutsOpen(true)}
-          >
-            <HelpIcon />
-          </NavButton>
-        </div>
-      </nav>
+      <div ref={search} className="canvas-search" onFocus={() => {
+        if (useUi.getState().playlistOpen) useUi.getState().setPlaylistOpen(false);
+      }}>
+        <ArtistSearch variant="discovery" label="Find an artist" placeholder="Find an artist…" idleContent={<RecentArtists />} />
+      </div>
 
-      <AnimatePresence>
-        {navPanel && <NavFlyout key={navPanel} panel={navPanel} />}
-      </AnimatePresence>
-    </>
-  );
-}
-
-interface NavButtonProps {
-  panel?: NavPanel;
-  active?: boolean;
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}
-
-function NavButton({ panel, active, label, onClick, children }: NavButtonProps) {
-  return (
-    <button
-      className={`nav-btn ${active ? "is-active" : ""}`}
-      title={label}
-      aria-label={label}
-      aria-pressed={active}
-      aria-expanded={panel ? active : undefined}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-}
-
-function NavFlyout({ panel }: { panel: NavPanel }) {
-  return (
-      <motion.div
-      className={`nav-flyout glass ${panel === "bridges" ? "is-bridges" : ""}`}
-      initial={{ x: -12, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: -12, opacity: 0 }}
-      transition={{ type: "spring", stiffness: 460, damping: 36 }}
-    >
-      {panel === "search" ? (
-        <SearchPanel />
-      ) : panel === "recent" ? (
-        <RecentPanel />
-      ) : (
+      {navPanel === "bridges" && <div id="artist-connections" className="nav-flyout glass is-bridges"
+        role="region" aria-label="Artist connections" onKeyDown={(event) => {
+          if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closePanel(); }
+        }}>
+        <header className="nav-flyout-head">
+          <h2>Connections</h2>
+          <button type="button" className="nav-close" aria-label="Close panel" onClick={closePanel}><CloseIcon size={16} /></button>
+        </header>
         <BridgePanel />
-      )}
-    </motion.div>
-  );
-}
+      </div>}
 
-function SearchPanel() {
-  return (
-    <>
-      <header className="nav-flyout-head">
-        <h2>Search</h2>
-      </header>
-      <div className="nav-flyout-body">
-        <ArtistSearch variant="panel" placeholder="Search any artist…" autoFocus />
-        <p className="nav-flyout-note">
-          Find an artist and fly to their place in the universe.
-        </p>
-      </div>
     </>
   );
 }
 
-function RecentPanel() {
+function RecentArtists() {
   const entries = useHistory((s) => s.entries);
-  const nodes = useGraph((s) => s.nodes);
+  const [pending, setPending] = useState<number | null>(null);
+  const [error, setError] = useState("");
 
-  return (
-    <>
-      <header className="nav-flyout-head">
-        <h2>Recent</h2>
-        {entries.length > 0 && (
-          <button className="nav-flyout-clear" onClick={() => useHistory.getState().clear()}>
-            Clear
-          </button>
-        )}
-      </header>
-      <div className="nav-flyout-body scrollbar-slim">
-        {entries.length === 0 ? (
-          <p className="nav-flyout-note">
-            Artists you search for show up here, so you can pick a thread back up
-            later.
-          </p>
-        ) : (
-          entries.map((entry) => {
-            const onCanvas = Boolean(nodes[entry.id]);
-            return (
-              <button
-                key={entry.id}
-                className="nav-recent-row"
-                onClick={() => {
-                  if (onCanvas) {
-                    useGraph.getState().select(entry.id);
-                    canvas.flyTo(entry.id);
-                  } else {
-                    void seedFromSearch(entry).then(() =>
-                      setTimeout(() => canvas.fitAll(), 450)
-                    );
-                  }
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={entry.picture} alt="" />
-                <span className="nav-recent-name">{entry.name}</span>
-                <span className="nav-recent-hint">
-                  {onCanvas ? "fly to" : "add"}
-                </span>
-              </button>
-            );
-          })
-        )}
+  return <div className="nav-flyout-body scrollbar-slim">
+    <section className="search-recents" aria-labelledby="recent-artists-heading">
+      <div className="recent-artists-header">
+        <h3 id="recent-artists-heading">Recent artists</h3>
+        {entries.length > 0 && <button type="button" className="nav-flyout-clear" onClick={() => useHistory.getState().clear()}>Clear</button>}
       </div>
-    </>
-  );
+      {entries.length === 0 ? <p className="nav-flyout-note">Artists you explore will appear here.</p> : entries.map((entry) =>
+        <button type="button" key={entry.id} className="nav-recent-row" disabled={pending !== null} onClick={async () => {
+          setPending(entry.id);
+          setError("");
+          try { await navigateToArtist(entry); }
+          catch { setError(`Couldn't open ${entry.name}. Please try again.`); }
+          finally { setPending(null); }
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={entry.picture} alt="" />
+          <span className="nav-recent-name">{entry.name}</span>
+          <span className="nav-recent-hint" aria-hidden="true">↗</span>
+        </button>
+      )}
+    </section>
+    <p role="status" className="nav-flyout-note">{error}</p>
+  </div>;
 }

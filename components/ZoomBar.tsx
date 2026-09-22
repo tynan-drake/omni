@@ -1,164 +1,64 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import {
-  canvas,
-  getScale,
-  subscribeScale,
-  ZOOM_MAX,
-  ZOOM_MIN,
-} from "@/lib/canvas-controller";
+import { canvas, getScale, subscribeScale, ZOOM_MAX, ZOOM_MIN } from "@/lib/canvas-controller";
+import { useGraph } from "@/store/graph";
 import { useUi } from "@/store/ui";
-import {
-  ChevronDownIcon,
-  FitIcon,
-  MinusIcon,
-  PanIcon,
-  PlusIcon,
-  SelectIcon,
-} from "./Icons";
-
-const STEP = 1.35;
-
-/** Live viewport scale. d3 owns the transform, so we read it off the bridge. */
-function useScale(): number {
-  return useSyncExternalStore(subscribeScale, getScale, () => 1);
-}
+import { ChevronDownIcon, FitIcon, SelectIcon } from "./Icons";
 
 export default function ZoomBar() {
-  const scale = useScale();
+  const scale = useSyncExternalStore(subscribeScale, getScale, () => 1);
   const canvasTool = useUi((state) => state.canvasTool);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const selectedIds = useGraph((state) => state.selectedIds);
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
 
-  // Close the zoom menu on outside click or Escape.
   useEffect(() => {
-    if (!menuOpen) return;
-    const onDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
+    if (!open) return;
+    const onDown = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
     };
     window.addEventListener("pointerdown", onDown);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("pointerdown", onDown);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [menuOpen]);
+    return () => window.removeEventListener("pointerdown", onDown);
+  }, [open]);
 
-  const run = (fn: () => void) => () => {
-    setMenuOpen(false);
-    fn();
+  const run = (action: () => void) => {
+    setOpen(false);
+    action();
+    trigger.current?.focus();
   };
 
-  const items = [
-    { label: "Zoom in", hint: "+", run: () => canvas.zoomBy(STEP) },
-    { label: "Zoom out", hint: "−", run: () => canvas.zoomBy(1 / STEP) },
-    { label: "Zoom to 100%", hint: "0", run: () => canvas.zoomTo(1) },
-    { label: "Zoom to fit", hint: "F", run: () => canvas.fitAll() },
-  ];
-
-  return (
-    <motion.div
-      ref={rootRef}
-      className="zoombar"
-      initial={{ y: 20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-    >
-      <div className="zoombar-inner glass" role="toolbar" aria-label="Canvas tools">
-        <button
-          className={`zoom-btn tool-btn ${canvasTool === "pan" ? "is-active" : ""}`}
-          title="Pan canvas"
-          aria-label="Pan canvas"
-          aria-pressed={canvasTool === "pan"}
-          onClick={() => useUi.getState().setCanvasTool("pan")}
-        >
-          <PanIcon size={16} />
-        </button>
-        <button
-          className={`zoom-btn tool-btn ${canvasTool === "select" ? "is-active" : ""}`}
-          title="Select artists"
-          aria-label="Select artists"
-          aria-pressed={canvasTool === "select"}
-          onClick={() => useUi.getState().setCanvasTool("select")}
-        >
-          <SelectIcon size={16} />
-        </button>
-
-        <span className="zoombar-divider" aria-hidden="true" />
-
-        <button
-          className="zoom-btn"
-          title="Zoom out (−)"
-          aria-label="Zoom out"
-          disabled={scale <= ZOOM_MIN + 0.001}
-          onClick={() => canvas.zoomBy(1 / STEP)}
-        >
-          <MinusIcon size={16} />
-        </button>
-        <button
-          className="zoom-btn"
-          title="Zoom in (+)"
-          aria-label="Zoom in"
-          disabled={scale >= ZOOM_MAX - 0.001}
-          onClick={() => canvas.zoomBy(STEP)}
-        >
-          <PlusIcon size={16} />
-        </button>
-
-        <span className="zoombar-divider" aria-hidden="true" />
-
-        <button
-          className="zoom-btn is-wide"
-          title="Fit view (F)"
-          aria-label="Zoom to fit"
-          onClick={() => canvas.fitAll()}
-        >
-          <FitIcon size={15} />
-        </button>
-
-        <span className="zoombar-divider" aria-hidden="true" />
-
-        <button
-          className={`zoom-level ${menuOpen ? "is-open" : ""}`}
-          aria-label={`Zoom level ${Math.round(scale * 100)}% — open zoom menu`}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((o) => !o)}
-        >
-          <span className="zoom-level-value">{Math.round(scale * 100)}%</span>
-          <ChevronDownIcon size={12} />
-        </button>
-      </div>
-
-      <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            className="zoom-menu glass"
-            role="menu"
-            initial={{ y: 6, opacity: 0, scale: 0.97 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 4, opacity: 0, scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 520, damping: 36 }}
-          >
-            {items.map((item) => (
-              <button
-                key={item.label}
-                className="zoom-menu-item"
-                role="menuitem"
-                onClick={run(item.run)}
-              >
-                <span>{item.label}</span>
-                <span className="kbd">{item.hint}</span>
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
+  return <div ref={root} className="zoombar" onBlur={(event) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+  }} onKeyDown={(event) => {
+    if (event.key === "Escape" && open) {
+      event.preventDefault(); event.stopPropagation(); setOpen(false); trigger.current?.focus();
+    }
+  }}>
+    {canvasTool === "select" && <div className="selection-status glass">
+      <span role="status"><SelectIcon size={15} /> {selectedIds.length ? `${selectedIds.length} selected` : "Select artists"}</span>
+      {selectedIds.length > 0 && <button type="button" onClick={() => useUi.getState().openPlaylistFor(selectedIds)}>Create playlist</button>}
+      <button type="button" className="selection-done" onClick={() => { useUi.getState().setCanvasTool("pan"); trigger.current?.focus(); }}>Done</button>
+    </div>}
+    <div className="zoombar-inner glass">
+      <button type="button" className="view-fit" title="Fit view (F)" onClick={() => canvas.fitAll()}><FitIcon size={16} /><span>Fit view</span></button>
+      <button type="button" ref={trigger} className={`zoom-level ${open ? "is-open" : ""}`}
+        aria-label={`View options, zoom ${Math.round(scale * 100)}%`} aria-expanded={open}
+        aria-controls={open ? "view-options" : undefined} onClick={() => setOpen(!open)}>
+        <span className="zoom-level-value">{Math.round(scale * 100)}%</span><ChevronDownIcon size={12} />
+      </button>
+    </div>
+    {open && <div id="view-options" className="zoom-menu glass" role="group" aria-label="View options">
+      <button type="button" className="zoom-menu-item" disabled={scale >= ZOOM_MAX} onClick={() => canvas.zoomBy(1.35)}>Zoom in <span className="kbd">+</span></button>
+      <button type="button" className="zoom-menu-item" disabled={scale <= ZOOM_MIN} onClick={() => canvas.zoomBy(1 / 1.35)}>Zoom out <span className="kbd">−</span></button>
+      <button type="button" className="zoom-menu-item" onClick={() => run(() => canvas.zoomTo(1))}>Actual size <span className="kbd">0</span></button>
+      <button type="button" className="zoom-menu-item" aria-pressed={canvasTool === "select"}
+        onClick={() => run(() => useUi.getState().setCanvasTool(canvasTool === "select" ? "pan" : "select"))}>
+        {canvasTool === "select" ? "Finish selecting" : "Select artists"}<SelectIcon size={15} />
+      </button>
+      <button type="button" className="zoom-menu-item" onClick={() => run(() => useUi.getState().setNavPanel("bridges"))}>Artist connections</button>
+      <button type="button" className="zoom-menu-item" onClick={() => run(() => useUi.getState().setShortcutsOpen(true))}>Help & shortcuts <span className="kbd">?</span></button>
+    </div>}
+  </div>;
 }

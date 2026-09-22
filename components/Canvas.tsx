@@ -40,6 +40,7 @@ import { nodeMatchesFilter, useUi } from "@/store/ui";
 import { Orb } from "./Orb";
 import { EdgeLayer } from "./EdgeLayer";
 import MitosisSurface from "./MitosisSurface";
+import DiscoveryLens from "./DiscoveryLens";
 import GooeyMitosisSurface from "./GooeyMitosisSurface";
 
 export default function Canvas() {
@@ -72,6 +73,7 @@ export default function Canvas() {
   );
   const filter = useUi((s) => s.filter);
   const canvasTool = useUi((s) => s.canvasTool);
+  const discoveryOpen = useUi((s) => s.discoveryOpen);
   const expanding = useUi((s) => s.expanding);
   const splitFormation = useUi((s) => s.splitFormation);
   const sizeScale = useOrbDials((s) => s.sizeScale);
@@ -690,6 +692,7 @@ export default function Canvas() {
           />
         )
       )}
+      {order.length > 0 && !discoveryOpen && <DiscoveryLens />}
       {marquee && (
         <div
           className="selection-marquee"

@@ -10,8 +10,8 @@ export interface FilterState {
   decades: Set<number>;
 }
 
-/** Flyout panels hung off the left nav rail; only one is open at a time. */
-export type NavPanel = "search" | "recent" | "bridges";
+/** Navigation panels; only one is open at a time. */
+export type NavPanel = "search" | "bridges";
 export type CanvasTool = "pan" | "select";
 
 export interface CanvasContextMenuState {
@@ -39,9 +39,12 @@ export interface SplitFormationState {
 }
 
 interface UiState {
+  discoveryOpen: boolean;
+  showDiscovery: () => void;
+  resumeExploration: () => void;
   /** node id whose action menu is open */
   menuFor: number | null;
-  /** which nav rail flyout is open, if any */
+  /** which navigation panel is open, if any */
   navPanel: NavPanel | null;
   /** node id whose detail panel is open */
   detailFor: number | null;
@@ -92,7 +95,13 @@ interface UiState {
 let toastTimer: ReturnType<typeof setTimeout> | null = null;
 let splitId = 0;
 
-export const useUi = create<UiState>((set) => ({
+export const useUi = create<UiState>((set, get) => ({
+  discoveryOpen: false,
+  showDiscovery: () => {
+    get().closeAll();
+    set({ discoveryOpen: true, canvasTool: "pan" });
+  },
+  resumeExploration: () => set({ discoveryOpen: false }),
   menuFor: null,
   navPanel: null,
   detailFor: null,
@@ -115,9 +124,9 @@ export const useUi = create<UiState>((set) => ({
       detailFor: null,
       ...(id !== null && { canvasContextMenu: null }),
     }),
-  setNavPanel: (panel) => set({ navPanel: panel }),
+  setNavPanel: (panel) => set({ navPanel: panel, ...(panel && { playlistOpen: false }) }),
   toggleNavPanel: (panel) =>
-    set((s) => ({ navPanel: s.navPanel === panel ? null : panel })),
+    set((s) => ({ navPanel: s.navPanel === panel ? null : panel, playlistOpen: false })),
   openDetail: (id) =>
     set({
       detailFor: id,
@@ -132,12 +141,13 @@ export const useUi = create<UiState>((set) => ({
     set({
       playlistOpen: open,
       playlistArtistIds: null,
-      ...(open && { detailFor: null, canvasContextMenu: null }),
+      ...(open && { navPanel: null, detailFor: null, canvasContextMenu: null }),
     }),
   openPlaylistFor: (ids) =>
     set({
       playlistOpen: true,
       playlistArtistIds: [...new Set(ids)],
+      navPanel: null,
       detailFor: null,
       canvasContextMenu: null,
     }),
@@ -192,6 +202,7 @@ export const useUi = create<UiState>((set) => ({
   startConnecting: (id) =>
     set({
       connectingFrom: id,
+      playlistOpen: false,
       navPanel: "bridges",
       menuFor: null,
       detailFor: null,

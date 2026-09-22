@@ -52,8 +52,8 @@ export const canvas = {
   getTransform: () => impl.getTransform(),
 };
 
-/** Chrome the canvas should keep clear when fitting content: the left nav rail. */
-export const VIEWPORT_INSET = { left: 62, top: 76, right: 20, bottom: 84 };
+/** Space for Home, the navigation dock, and viewport controls. */
+export const VIEWPORT_INSET = { left: 20, top: 76, right: 20, bottom: 100 };
 
 /** Hard limits, shared by the d3 zoom behaviour and the zoom bar readout. */
 export const ZOOM_MIN = 0.15;

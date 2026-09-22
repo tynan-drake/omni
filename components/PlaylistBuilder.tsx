@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   exportToSpotify,
@@ -42,6 +42,16 @@ export default function PlaylistBuilder() {
 }
 
 function Builder() {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    triggerRef.current = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+  }, []);
+  const close = () => {
+    useUi.getState().setPlaylistOpen(false);
+    if (triggerRef.current?.isConnected) triggerRef.current.focus();
+  };
   const nodes = useGraph((s) => s.nodes);
   const order = useGraph((s) => s.order);
   const playlistArtistIds = useUi((s) => s.playlistArtistIds);
@@ -143,6 +153,11 @@ function Builder() {
 
   return (
     <motion.aside
+      onKeyDown={(event) => {
+        if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(); }
+      }}
+      id="playlist-builder"
+      aria-label="Create playlist"
       className="playlist-panel glass"
       initial={{ x: 40, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
@@ -154,8 +169,9 @@ function Builder() {
           <PlaylistIcon /> Playlist from {scoped ? "selected artists" : "this universe"}
         </h2>
         <button
+          ref={closeRef}
           aria-label="Close playlist builder"
-          onClick={() => useUi.getState().setPlaylistOpen(false)}
+          onClick={close}
         >
           <CloseIcon />
         </button>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useUi } from "@/store/ui";
 import { useGraph } from "@/store/graph";
 import Canvas from "./Canvas";
 import CanvasContextMenu from "./CanvasContextMenu";
@@ -22,19 +23,23 @@ import ZoomBar from "./ZoomBar";
 export default function OmniApp() {
   const hasNodes = useGraph((s) => s.order.length > 0);
 
+  const discoveryOpen = useUi((s) => s.discoveryOpen);
+
   return (
     <>
       <CanvasPersistence />
       <OrbFilters />
-      <Canvas />
-      <CanvasContextMenu />
-      <OrbMenu />
-      <PlaylistBuilder />
-      <CommandPalette />
-      <ShortcutsOverlay />
+      <div className={discoveryOpen ? "exploration-is-hidden" : undefined} inert={discoveryOpen}>
+        <Canvas />
+        <CanvasContextMenu />
+        <OrbMenu />
+        <PlaylistBuilder />
+        <CommandPalette />
+        <ShortcutsOverlay />
+        <Sidebar />
+        {hasNodes && <ZoomBar />}
+      </div>
       <NowPlaying />
-      <Sidebar />
-      {hasNodes && <ZoomBar />}
       <Landing />
       <Toast />
       <Shortcuts />

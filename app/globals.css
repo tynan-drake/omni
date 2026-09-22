@@ -15,13 +15,8 @@
   --lineage-branch-color: #6eb7f7;
   --bridge-edge-color: var(--color-neutral-400);
 
-  /* left nav rail: flush to the screen edge, its own width, and the left edge
-   * everything else starts at. Keep --rail-gutter in sync with
-   * VIEWPORT_INSET.left in lib/canvas-controller.ts, which is what the canvas
-   * uses to centre and fit content beside the rail. */
-  --rail-width: 56px;
-  --rail-inset: 14px;
-  --rail-gutter: 62px;
+  /* Full-width canvas; chrome floats within the viewport. */
+  --rail-gutter: 0px;
 
   /* landing wordmark — shipped defaults for the animated fill. The Wordmark
    * dial panel (components/WordmarkDials.tsx) overrides these at runtime. */
@@ -425,8 +420,9 @@ body {
 
 .edge-legend {
   position: fixed;
-  bottom: 20px;
-  left: calc(var(--rail-gutter) + 14px);
+  top: 76px;
+  bottom: auto;
+  left: 16px;
   z-index: 20;
   display: flex;
   align-items: center;
@@ -1524,103 +1520,90 @@ body {
 
 /* -------------------------------------------------------------- nav rail */
 
-.nav-rail {
+/* Exploration navigation stays fixed while artists move beneath it. */
+.exploration-is-hidden { visibility: hidden; }
+
+.exploration-home {
   position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
+  top: max(16px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
   z-index: 60;
-  width: var(--rail-width);
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
-  padding: 16px 0;
-  border-radius: 0;
-  background: #000;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+.home-wordmark { font-family: var(--font-bruno-ace), sans-serif; font-size: 19px; }
+.exploration-playlist {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 60;
+}
+.canvas-search {
+  position: fixed;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: 50%;
+  translate: -50% 0;
+  z-index: 63;
+}
+.dock-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 14px;
   border: 0;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  border-top: none;
-  border-bottom: none;
-  box-shadow: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease;
 }
-
-.nav-logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  margin-bottom: 32px;
-  border: none;
+.dock-action svg { flex-shrink: 0; }
+.dock-action:hover, .dock-action.is-active { background: #ffffff12; }
+.exploration-playlist:hover, .exploration-playlist.is-active { background: #292929; }
+:is(.dock-action, .exploration-home, .view-fit, .zoom-level, .zoom-menu-item, .nav-close, .nav-recent-row, .nav-flyout-clear, .selection-status button):focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
+}
+:is(.dock-action, .exploration-home, .view-fit, .selection-status button):active { scale: 0.96; }
+.nav-close {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
   border-radius: 10px;
   background: transparent;
+  color: var(--ink-dim);
   cursor: pointer;
-  font-family: var(--font-bruno-ace), var(--font-geist-sans), sans-serif;
-  font-size: 21px;
-  line-height: 1;
-  color: #fff;
-  transition: color 0.18s ease, transform 0.18s ease;
 }
+.nav-close:hover { background: #ffffff12; color: var(--ink); }
+.search-recents { margin-top: 18px; }
+.recent-artists-header { display: flex; justify-content: space-between; align-items: center; padding-inline: 6px; }
+.recent-artists-header h3 { font-size: 12px; color: var(--ink-dim); font-weight: 500; }
 
-.nav-logo:hover {
-  color: #000;
-  background: #fff;
-  transform: translateY(-1px);
-}
-
-.nav-tools {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-}
-
-.nav-foot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  margin-top: auto;
-}
-
-.nav-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: transparent;
-  color: #fff;
-  cursor: pointer;
-  transition-property: color, background-color, border-color;
-  transition-duration: 0.15s;
-  transition-timing-function: ease;
-}
-
-.nav-btn:hover {
-  color: #000;
-  background: #fff;
-  border-color: #fff;
-}
-
-.nav-btn.is-active {
-  color: #000;
-  background: #fff;
-  border-color: #fff;
-}
 
 /* ----------------------------------------------------------- nav flyout */
 
 .nav-flyout {
   position: fixed;
-  top: var(--rail-inset);
-  left: calc(var(--rail-gutter) + 4px);
-  z-index: 58;
-  width: 300px;
-  max-height: min(560px, calc(100dvh - 28px));
+  bottom: calc(max(20px, env(safe-area-inset-bottom)) + 66px);
+  left: 50%;
+  translate: -50% 0;
+  z-index: 61;
+  width: min(360px, calc(100vw - 24px));
+  max-height: min(560px, calc(100dvh - 180px));
   display: flex;
   flex-direction: column;
   border-radius: 16px;
@@ -1631,7 +1614,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 13px 14px 9px;
+  padding: 6px 8px 6px 14px;
 }
 
 .nav-flyout-head h2 {
@@ -1643,6 +1626,8 @@ body {
 }
 
 .nav-flyout-clear {
+  min-height: 40px;
+  padding-inline: 8px;
   font-size: 11px;
   color: var(--ink-dim);
   border: none;
@@ -1710,7 +1695,7 @@ body {
   transition: opacity 0.12s ease;
 }
 
-.nav-recent-row:hover .nav-recent-hint {
+.nav-recent-row:is(:hover, :focus-visible) .nav-recent-hint {
   opacity: 1;
 }
 
@@ -1718,72 +1703,27 @@ body {
 
 .zoombar {
   position: fixed;
-  bottom: 20px;
-  /* centred on the canvas area, not the window — the rail eats the left edge */
-  left: calc(50% + var(--rail-gutter) / 2);
-  translate: -50% 0;
-  /* above the now-playing pill, so the open zoom menu isn't covered by it */
-  z-index: 72;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 62;
   display: flex;
-  flex-direction: column-reverse;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
 }
-
-.zoombar-inner {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 44px;
-  padding: 0 8px;
-  border-radius: 12px;
-}
-
-.zoombar-divider {
-  width: 1px;
-  height: 22px;
-  background: var(--surface-border);
-  margin: 0 4px;
-  flex-shrink: 0;
-}
-
-.zoom-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--ink-dim);
-  cursor: pointer;
-  transition-property: color, background-color, scale;
-  transition-duration: 0.15s;
-  transition-timing-function: ease;
-}
-
-.zoom-btn:hover:not(:disabled) {
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.zoom-btn.tool-btn.is-active {
-  color: var(--ink);
-  background: color-mix(in srgb, var(--brand) 24%, rgba(255, 255, 255, 0.06));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 48%, transparent);
-}
-
-.zoom-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
+.zoombar-inner { display: flex; align-items: center; padding: 4px; border-radius: 14px; }
+.view-fit { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: var(--ink-dim); font-size: 12px; cursor: pointer; }
+.view-fit:hover { color: var(--ink); background: #ffffff12; }
+.selection-status { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 14px; font-size: 12px; }
+.selection-status > span { display: inline-flex; align-items: center; gap: 6px; }
+.selection-status button { min-height: 36px; padding: 0 8px; border: 0; border-radius: 8px; background: #ffffff12; color: var(--ink); cursor: pointer; }
+.selection-status .selection-done { background: #ffffff24; }
 
 .zoom-level {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 26px;
+  min-height: 40px;
   padding: 0 6px 0 8px;
   border: none;
   border-radius: 8px;
@@ -1810,6 +1750,11 @@ body {
 }
 
 .zoom-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  max-height: calc(100dvh - 180px);
+  overflow-y: auto;
   width: 200px;
   padding: 4px;
   border-radius: 12px;
@@ -1820,6 +1765,7 @@ body {
 }
 
 .zoom-menu-item {
+  min-height: 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2061,7 +2007,12 @@ button:active:not(:disabled) {
 }
 
 .nav-flyout.is-bridges {
-  width: min(370px, calc(100vw - var(--rail-gutter) - 20px));
+  width: min(370px, calc(100vw - 32px));
+  top: 76px;
+  bottom: auto;
+  left: 16px;
+  translate: none;
+  max-height: calc(100dvh - 170px);
   max-height: calc(100dvh - 28px);
 }
 
@@ -2695,7 +2646,7 @@ button.bridge-row {
 .artist-search.is-discovery { width: min(390px, calc(100vw - 32px)); pointer-events: auto; }
 .is-discovery .search-field { min-height: 48px; border-radius: 25px; background: #171717f2; padding-inline: 16px 10px; }
 .is-discovery .search-field input { font-size: 16px; }
-.is-discovery .search-results { top: auto; bottom: calc(100% + 12px); max-height: min(380px, calc(100dvh - 245px)); background: #141414f5; box-shadow: 0 12px 48px #0008, 0 0 0 1px #ffffff12; border-radius: 18px; }
+.is-discovery .search-results { backdrop-filter: blur(40px) saturate(120%); -webkit-backdrop-filter: blur(40px) saturate(120%); top: auto; bottom: calc(100% + 12px); max-height: min(380px, calc(100dvh - 245px)); background: #101010ed; box-shadow: 0 12px 48px #0008, 0 0 0 1px #ffffff12; border-radius: 18px; }
 .is-discovery .search-result { min-height: 52px; }
 .is-discovery .search-result small { display: block; }
 .discovery-node:has(.discovery-artist:focus-visible) { z-index: 2; }
@@ -2708,3 +2659,27 @@ button.bridge-row {
 .search-source-links a:focus-visible { outline: 2px solid var(--color-neutral-300); outline-offset: 3px; }
 .search-result.is-spotify .search-portrait, .search-result.is-spotify .search-portrait img { border-radius: 4px; }
 .search-result.is-spotify .search-portrait img { object-fit: contain; }
+
+/* Stack supporting controls when the dock and player can no longer fit side by side. */
+@media (max-width: 1000px) {
+  .zoombar { top: auto; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 66px); }
+  .zoom-menu { top: auto; bottom: calc(100% + 8px); }
+  .selection-status { order: 0; }
+  .edge-legend { top: auto; bottom: 158px; gap: 8px; font-size: 10px; }
+}
+@media (max-width: 420px) {
+  .dock-action { padding-inline: 10px; font-size: 12px; }
+  .view-fit { padding-inline: 8px; }
+  .zoombar { right: 12px; }
+  .resume-exploration { max-width: calc(100vw - 32px); }
+  .nav-flyout.is-bridges { left: 12px; right: 12px; width: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dock-action { transition: none; }
+  :is(.dock-action, .exploration-home, .view-fit, .selection-status button):active { scale: none; }
+}
+
+.search-idle .search-recents { margin-top: 4px; }
+@media (max-width: 1000px) {
+  body:has(.canvas-search .search-results) .zoombar { visibility: hidden; }
+}

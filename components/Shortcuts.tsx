@@ -21,7 +21,16 @@ const isTyping = (target: EventTarget | null) => {
 export default function Shortcuts() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       const ui = useUi.getState();
+      const discovering = ui.discoveryOpen || useGraph.getState().order.length === 0;
+      if (discovering) {
+        if (!isTyping(e.target) && (e.key === "/" || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k"))) {
+          e.preventDefault();
+          document.querySelector<HTMLInputElement>(".discovery [data-omni-search]")?.focus();
+        }
+        return;
+      }
 
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -31,6 +40,7 @@ export default function Shortcuts() {
 
       if (e.key === "Escape") {
         ui.closeAll();
+        ui.setCanvasTool("pan");
         useGraph.getState().select(null);
         (document.activeElement as HTMLElement | null)?.blur?.();
         return;
@@ -49,7 +59,7 @@ export default function Shortcuts() {
         case "/": {
           e.preventDefault();
           // On the landing hero the search field is already on screen; once the
-          // canvas has orbs, search lives in the nav rail flyout.
+          // canvas has orbs, search opens above the navigation dock.
           const field = document.querySelector<HTMLInputElement>("[data-omni-search]");
           if (field) field.focus();
           else ui.setNavPanel("search");
@@ -80,6 +90,7 @@ export default function Shortcuts() {
           break;
         }
         case " ": {
+          if ((e.target as HTMLElement)?.closest("button, a, summary")) return;
           if (useAudio.getState().track) {
             e.preventDefault();
             useAudio.getState().toggle();
