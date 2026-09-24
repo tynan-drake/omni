@@ -285,7 +285,6 @@ function OrbImpl({
         </div>
         <div className="orb-label">
           <span className="orb-name">{node.name}</span>
-          {node.era && <span className="orb-era">{node.era}</span>}
         </div>
       </motion.div>
       {splitRole === "parent" && (

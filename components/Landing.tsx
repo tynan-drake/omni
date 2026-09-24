@@ -6,7 +6,8 @@ import { canvas } from "@/lib/canvas-controller";
 import { resolveWheelGesture } from "@/lib/canvas-gestures";
 import { discoveryCells, discoverySearchTarget, type DiscoveryCell } from "@/lib/discovery-field";
 import { createIntroRun, playLanding, playWavefront, WAVEFRONT_BASE_RADIUS, type IntroRun } from "@/lib/discovery-intro";
-import catalogue from "@/lib/discovery-artists.json";
+import discoveryCatalogue from "@/lib/discovery-artists.json";
+import { featuredDiscoveryCatalogue } from "@/lib/discovery-featured";
 import type { ArtistRef } from "@/lib/types";
 import { expand, fetchDetails } from "@/store/actions";
 import { useDiscoveryIntro } from "@/store/discovery-intro";
@@ -32,6 +33,8 @@ export default function Landing() {
 }
 
 function Discovery() {
+  // Discovery mounts after hydration; keep this draw stable throughout browsing.
+  const [catalogue] = useState(() => featuredDiscoveryCatalogue(discoveryCatalogue));
   const hasExploration = useGraph((s) => s.order.length > 0);
   const reducedMotion = useReducedMotion();
   const surface = useRef<HTMLDivElement>(null);
@@ -79,7 +82,7 @@ function Discovery() {
       setIntro(run);
     });
     return () => { cancelled = true; };
-  }, [measured, reducedMotion, epoch]);
+  }, [measured, reducedMotion, epoch, catalogue]);
 
   const pan = (x: number, y: number) => {
     if (x === 0 && y === 0) return;
