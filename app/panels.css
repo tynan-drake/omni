@@ -478,6 +478,11 @@
 }
 
 .playlist-generate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
   padding: 10px 0;
   border: none;
   border-radius: 11px;

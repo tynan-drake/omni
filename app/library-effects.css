@@ -1,0 +1,28 @@
+/* Keep the combobox popup outside the beam's clipped surface. */
+.search-beam:focus-within {
+  outline: 2px solid var(--color-neutral-400);
+  outline-offset: 3px;
+}
+
+/* Metal owns the fill; legacy wordmark animation must not stack with it. */
+.landing-wordmark.landing-wordmark-metal {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  animation: none;
+  filter: none;
+  color: #d4d4d4;
+}
+
+.metal-wordmark {
+  display: inline-block;
+  min-height: 1em;
+}
+
+.metal-wordmark .metal-fx-root {
+  text-indent: 0;
+  vertical-align: top;
+}
+
+@media (forced-colors: active) {
+  .search-beam:focus-within { outline-color: Highlight; }
+}

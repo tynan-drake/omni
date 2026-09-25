@@ -3,6 +3,7 @@
 import { neutralizePurple } from "@/lib/color-utils";
 
 import { memo } from "react";
+import BridgeSignals from "./BridgeSignals";
 import { mixHex } from "@/lib/color-utils";
 import { registerEdge } from "@/lib/registry";
 import { useGraph } from "@/store/graph";
@@ -77,6 +78,7 @@ function EdgeLayerImpl() {
           </g>
         );
       })}
+      <BridgeSignals />
     </>
   );
 }

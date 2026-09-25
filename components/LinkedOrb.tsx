@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { canvas } from "@/lib/canvas-controller";
 import { getOrbEls } from "@/lib/registry";
+import { reserveConnectionSpace } from "@/lib/simulation";
 import type { ArtistRef, BridgeMode } from "@/lib/types";
 import { connectArtists } from "@/store/actions";
 import { useGraph } from "@/store/graph";
@@ -76,6 +77,7 @@ function ConnectionComposer({ source }: { source: ArtistRef }) {
     mounted.current = true;
     let frame = 0;
     let stopCamera: (() => void) | undefined;
+    let releaseSpace: (() => void) | undefined;
     let offset: { x: number; y: number; size: number; above: boolean } | null = null;
     const follow = () => {
       const rect = getOrbEls().get(source.id)?.getBoundingClientRect();
@@ -88,6 +90,7 @@ function ConnectionComposer({ source }: { source: ArtistRef }) {
           // A stable layout lets the camera frame the pair instead of moving orbs.
           const stacked = window.innerWidth < 600;
           offset = { x: stacked ? 0 : distance / k, y: stacked ? distance / k : 0, size: size / k, above: false };
+          releaseSpace = reserveConnectionSpace(source.id, offset, window.matchMedia("(prefers-reduced-motion: reduce)").matches);
           stopCamera = canvas.frameConnection(source.id, offset);
         }
         const dx = offset.x * k, dy = offset.y * k;
@@ -98,7 +101,7 @@ function ConnectionComposer({ source }: { source: ArtistRef }) {
       frame = requestAnimationFrame(follow);
     };
     follow();
-    return () => { mounted.current = false; cancelAnimationFrame(frame); stopCamera?.(); };
+    return () => { mounted.current = false; cancelAnimationFrame(frame); stopCamera?.(); releaseSpace?.(); };
   }, [source.id]);
 
   useEffect(() => {
@@ -112,7 +115,7 @@ function ConnectionComposer({ source }: { source: ArtistRef }) {
     const transform = canvas.getTransform();
     const destination = rect ? { x: (rect.x + rect.width / 2 - transform.x) / transform.k, y: (rect.y + rect.height / 2 - transform.y) / transform.k } : undefined;
     void connectArtists(source.id, target, mode, destination);
-    requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>(".linked-orb-cancel")?.focus({ preventScroll: true }));
+    requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>('[aria-label="Cancel connection"]')?.focus({ preventScroll: true }));
   };
 
   if (!position) return null;
@@ -131,15 +134,22 @@ function ConnectionComposer({ source }: { source: ArtistRef }) {
     </div>
     <section className="linked-orb-composer" style={{ left: position.searchX, top: position.y + (position.above ? -1 : 1) * (position.size / 2 + 14), transform: position.above ? "translate(-50%, -100%)" : "translateX(-50%)" }}>
       {visibleStage >= 3 && <motion.div className="linked-orb-search" initial={reducedMotion ? false : SEARCH.hidden} animate={SEARCH.visible} transition={reducedMotion ? INSTANT : SEARCH.spring}>
-        <div className="linked-orb-heading"><strong>{request?.target.name ?? `Connect ${source.name}`}</strong><button type="button" aria-label="Cancel connection" onClick={close}><CloseIcon size={14} /></button></div>
-        {!request && <><ArtistSearch variant="panel" label={`Artist to connect with ${source.name}`} placeholder="Search for an artist…" excludeId={source.id} onPick={connect} /><p className="linked-orb-hint">Find an artist to connect with {source.name}.</p></>}
+        <div className="linked-orb-heading">
+          <div className="min-w-0 flex-1">
+            <strong>{request?.target.name ?? `Connect ${source.name}`}</strong>
+            {!request && <p className="mt-0 text-xs leading-snug text-neutral-400">Find an artist to connect with {source.name}.</p>}
+          </div>
+          <button type="button" className="shrink-0 self-start" aria-label="Cancel connection" onClick={close}><CloseIcon size={14} /></button>
+        </div>
+        {!request && <div className="pt-2">
+          <ArtistSearch variant="panel" label={`Artist to connect with ${source.name}`} placeholder="Search for an artist…" excludeId={source.id} onPick={connect} />
+        </div>}
         <div role="status" aria-live="polite" className="linked-orb-status">{request?.message}</div>
         {request && !loading && <div className="linked-orb-recovery">
           {request.status === "error" && <button type="button" className="bridge-primary" onClick={() => connect(request.target, request.mode)}>Try again</button>}
           {request.status === "no_path" && request.mode === "influence" && <button type="button" className="bridge-primary" onClick={() => connect(request.target, "adjacent")}>Try broader musical ties</button>}
           <button type="button" onClick={() => useUi.getState().setBridgeRequest(null)}>Change artist</button>
         </div>}
-        <button type="button" className="linked-orb-cancel" onClick={close}>Cancel connection</button>
       </motion.div>}
     </section>
   </div>;

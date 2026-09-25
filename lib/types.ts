@@ -158,6 +158,8 @@ export interface BridgeResult {
 }
 
 export interface ArtistBridge {
+  /** Full discovered routes, including alternatives not yet added to the canvas. */
+  routeOptions?: BridgeResult;
   id: string;
   name: string;
   endpointIds: [number, number];

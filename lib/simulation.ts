@@ -1,5 +1,7 @@
 "use client";
 
+import { connectionSpaceOffsets, type ConnectionSpace } from "./connection-space";
+
 import {
   forceCollide,
   forceLink,
@@ -98,6 +100,74 @@ let simNodes: SimNode[] = [];
 const labelLayout: LabelLayout = { ...DEFAULT_LABEL_LAYOUT };
 const tickHandlers = new Set<TickHandler>();
 const positions: Positions = new Map();
+const physicalPositions: Positions = new Map();
+let connectionSpace: ConnectionSpace | null = null;
+let spaceOffsets = new Map<number, { x: number; y: number }>();
+let spaceTargets = new Map<number, { x: number; y: number }>();
+let spaceFrame = 0;
+let spaceLastTime = 0;
+let spaceReducedMotion = false;
+
+/* CONNECTION SPACE STORYBOARD
+ * Open: nearby artists ease outward with a 150ms damping time (no overshoot).
+ * Close: the same offsets ease to zero, restoring the underlying layout.
+ * Reduced motion: apply/release the temporary layout immediately.
+ */
+const SPACE_MOTION = { dampingMs: 150, settleDistance: .08 };
+
+function publishPositions(): void {
+  positions.clear();
+  for (const [id, node] of physicalPositions) {
+    const offset = spaceOffsets.get(id);
+    positions.set(id, { ...node, x: node.x + (offset?.x ?? 0), y: node.y + (offset?.y ?? 0) });
+  }
+  for (const handler of tickHandlers) handler(positions);
+}
+
+function animateConnectionSpace(): void {
+  if (spaceReducedMotion) {
+    cancelAnimationFrame(spaceFrame);
+    spaceFrame = 0;
+    spaceOffsets = new Map(spaceTargets);
+    publishPositions();
+    return;
+  }
+  if (spaceFrame) return;
+  spaceLastTime = performance.now();
+  const step = (now: number) => {
+    const blend = 1 - Math.exp(-(now - spaceLastTime) / SPACE_MOTION.dampingMs);
+    spaceLastTime = now;
+    let moving = false;
+    for (const id of new Set([...spaceOffsets.keys(), ...spaceTargets.keys()])) {
+      if (!physicalPositions.has(id)) { spaceOffsets.delete(id); continue; }
+      const current = spaceOffsets.get(id) ?? { x: 0, y: 0 };
+      const target = spaceTargets.get(id) ?? { x: 0, y: 0 };
+      const next = { x: current.x + (target.x - current.x) * blend, y: current.y + (target.y - current.y) * blend };
+      if (Math.hypot(next.x - target.x, next.y - target.y) < SPACE_MOTION.settleDistance) {
+        if (!target.x && !target.y) spaceOffsets.delete(id);
+        else spaceOffsets.set(id, target);
+      } else { moving = true; spaceOffsets.set(id, next); }
+    }
+    publishPositions();
+    spaceFrame = moving ? requestAnimationFrame(step) : 0;
+  };
+  spaceFrame = requestAnimationFrame(step);
+}
+
+/** Reserve a virtual orb without adding a graph node or changing saved physics. */
+export function reserveConnectionSpace(sourceId: number, offset: { x: number; y: number; size: number }, reducedMotion = false): () => void {
+  const reservation = { sourceId, x: offset.x, y: offset.y, radius: offset.size / 2 };
+  connectionSpace = reservation;
+  spaceReducedMotion = reducedMotion;
+  spaceTargets = connectionSpaceOffsets(physicalPositions, reservation);
+  animateConnectionSpace();
+  return () => {
+    if (connectionSpace !== reservation) return;
+    connectionSpace = null;
+    spaceTargets.clear();
+    animateConnectionSpace();
+  };
+}
 const restoredPositions = new Map<number, { x: number; y: number }>();
 const searchOrigins = new Map<number, { x: number; y: number }>();
 let timelineTargets = new Map<number, number>();
@@ -239,9 +309,9 @@ function ensureSim(): Simulation<SimNode, SimLink> {
     .velocityDecay(physics.friction)
     .alphaDecay(physics.settle)
     .on("tick", () => {
-      positions.clear();
+      physicalPositions.clear();
       for (const n of simNodes) {
-        positions.set(n.id, {
+        physicalPositions.set(n.id, {
           x: n.x ?? 0,
           y: n.y ?? 0,
           r: n.r,
@@ -250,7 +320,11 @@ function ensureSim(): Simulation<SimNode, SimLink> {
           labelOffset: n.labelOffset,
         });
       }
-      for (const h of tickHandlers) h(positions);
+      if (connectionSpace) {
+        spaceTargets = connectionSpaceOffsets(physicalPositions, connectionSpace);
+        animateConnectionSpace();
+      }
+      publishPositions();
     });
   return sim;
 }
@@ -266,7 +340,7 @@ export function getPositions(): Positions {
 
 export function serializePositions(): Record<number, { x: number; y: number }> {
   return Object.fromEntries(
-    [...positions].map(([id, p]) => [id, { x: p.x, y: p.y }])
+    [...physicalPositions].map(([id, p]) => [id, { x: p.x, y: p.y }])
   );
 }
 
@@ -354,7 +428,7 @@ export function syncGraph(
 
   // Drop positions of removed nodes so stale entries don't linger.
   for (const id of existing.keys()) {
-    if (!nextIds.has(id)) positions.delete(id);
+    if (!nextIds.has(id)) { positions.delete(id); physicalPositions.delete(id); spaceOffsets.delete(id); spaceTargets.delete(id); }
   }
 
   const links: SimLink[] = edges
@@ -554,6 +628,12 @@ export function kick(alpha = 0.5): void {
 }
 
 export function resetSimulation(): void {
+  if (spaceFrame) cancelAnimationFrame(spaceFrame);
+  spaceFrame = 0;
+  connectionSpace = null;
+  spaceOffsets.clear();
+  spaceTargets.clear();
+  physicalPositions.clear();
   simNodes = [];
   positions.clear();
   restoredPositions.clear();

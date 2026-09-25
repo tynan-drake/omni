@@ -145,6 +145,20 @@ export async function connectArtists(
         bridge.endpointIds.includes(target.id)
     );
   if (duplicate) {
+    // A saved route can be reopened from either artist. Keep its signal aligned
+    // with this connection gesture, including any routes revealed later.
+    useGraph.setState((state) => ({
+      bridges: {
+        ...state.bridges,
+        [duplicate.id]: {
+          ...duplicate,
+          endpointIds: [fromId, target.id],
+          routeOptions: duplicate.routeOptions
+            ? { ...duplicate.routeOptions, endpoints: [fromId, target.id] }
+            : undefined,
+        },
+      },
+    }));
     graph.setActiveBridge(duplicate.id);
     useUi.getState().cancelConnecting();
     setTimeout(() => canvas.fitNodes(duplicate.nodeIds), 80);
@@ -194,7 +208,9 @@ export async function connectArtists(
       useGraph.getState().addSeed({ ...target, accent: "#a3a3a3" });
       useHistory.getState().visit(target);
     }
-    const bridgeId = useGraph.getState().applyBridge(result);
+    // API/cache results use canonical ID order; the pulse follows the user's
+    // source → destination order without changing historical influence edges.
+    const bridgeId = useGraph.getState().applyBridge({ ...result, endpoints: [fromId, target.id] });
     if (!bridgeId) throw new Error("empty bridge result");
     const bridge = useGraph.getState().bridges[bridgeId];
     useUi.getState().cancelConnecting();

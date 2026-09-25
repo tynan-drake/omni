@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import { Retune } from "retune";
 import "./globals.css";
 import "./panels.css";
+import "./library-effects.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

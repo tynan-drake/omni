@@ -12,6 +12,7 @@ import type { PlaylistMode, PlaylistTrack } from "@/lib/types";
 import { useGraph } from "@/store/graph";
 import { useUi } from "@/store/ui";
 import { CloseIcon, PlaylistIcon } from "./Icons";
+import BusyOrb from "./BusyOrb";
 
 interface TrackPool {
   artistId: number;
@@ -209,9 +210,11 @@ function Builder() {
 
       <button
         className="playlist-generate"
+        aria-busy={generating}
         disabled={generating || artists.length === 0}
         onClick={() => void generate()}
       >
+        <BusyOrb active={generating} state="working" />
         {generating
           ? "Curating…"
           : tracks

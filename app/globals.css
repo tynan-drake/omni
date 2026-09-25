@@ -389,7 +389,7 @@ body {
   stroke-width: var(--edge-bridge-signal-width);
   stroke-dasharray: var(--edge-bridge-signal) var(--edge-bridge-gap);
   stroke-linecap: round;
-  animation: edge-bridge-flow var(--edge-bridge-dur) linear infinite;
+  animation: none;
 }
 
 .edge.is-dimmed {
@@ -2712,4 +2712,30 @@ button.bridge-row {
 .search-idle .search-recents { margin-top: 4px; }
 @media (max-width: 1000px) {
   body:has(.canvas-search .search-results) .zoombar { visibility: hidden; }
+}
+
+/* A single packet follows each complete bridge, including outside spotlight. */
+.bridge-signals { pointer-events: none; }
+.bridge-signal { opacity: .85; transition: opacity 240ms ease; }
+.bridge-signal.is-filtered { opacity: .15; }
+.bridge-signal polyline {
+  fill: none;
+  stroke: #e4efff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 9 109;
+  stroke-dashoffset: 9;
+  animation: bridge-route-signal var(--signal-duration) linear infinite;
+}
+.bridge-signal .bridge-signal-halo { stroke-width: 7; stroke-opacity: .16; }
+.bridge-signal .bridge-signal-core { stroke-width: 2.4; stroke-opacity: .95; }
+@keyframes bridge-route-signal {
+  0% { stroke-dashoffset: 9; opacity: 0; }
+  7%, 70% { opacity: 1; }
+  80% { stroke-dashoffset: -100; opacity: 0; }
+  100% { stroke-dashoffset: -100; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bridge-signals { display: none; }
+  .bridge-signal polyline { animation: none; }
 }

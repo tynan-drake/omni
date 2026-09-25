@@ -53,3 +53,21 @@ it("a superseded request cannot replace the newer request's result", async () =>
   expect(useUi.getState().bridgeRequest?.target.id).toBe(3);
   expect(useGraph.getState().bridgeOrder).toHaveLength(0);
 });
+
+it("keeps the chosen pulse direction when the API returns canonical endpoint order", async () => {
+  useGraph.getState().addSeed({ ...b, accent: "#aaa" });
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => found }));
+  await connectArtists(2, a);
+  const graph = useGraph.getState();
+  const bridge = graph.bridges[graph.bridgeOrder[0]];
+  expect(bridge.endpointIds).toEqual([2, 1]);
+  expect(bridge.routeOptions?.endpoints).toEqual([2, 1]);
+  expect(graph.edges[0]).toMatchObject({ from: 1, to: 2 });
+
+  await connectArtists(1, b);
+  const reopened = useGraph.getState().bridges[bridge.id];
+  expect(reopened.endpointIds).toEqual([1, 2]);
+  expect(reopened.routeOptions?.endpoints).toEqual([1, 2]);
+  expect(useGraph.getState().bridgeOrder).toHaveLength(1);
+  expect(fetch).toHaveBeenCalledTimes(1);
+});

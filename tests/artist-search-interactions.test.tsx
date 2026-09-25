@@ -13,6 +13,13 @@ const search = async (q: string) => {
 };
 beforeEach(() => {
   vi.useFakeTimers();
+  vi.stubGlobal("matchMedia", vi.fn().mockImplementation(() => ({
+    matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    addListener: vi.fn(), removeListener: vi.fn(),
+  })));
+  vi.stubGlobal("IntersectionObserver", class {
+    observe() {} disconnect() {} unobserve() {}
+  });
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ artists }) }));
   Element.prototype.scrollIntoView = vi.fn();
 });

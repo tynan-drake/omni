@@ -5,6 +5,9 @@ import type { ArtistRef, ArtistSearchResult } from "@/lib/types";
 import { navigateToArtist } from "@/store/actions";
 import { useArtistSearch } from "@/hooks/useArtistSearch";
 import { SearchIcon, SpotifyIcon } from "./Icons";
+import { BorderBeam } from "border-beam";
+import { useReducedEffects } from "@/hooks/useReducedEffects";
+import { useDelayedBusy } from "@/hooks/useDelayedBusy";
 
 interface ArtistSearchProps {
   variant: "hero" | "bar" | "panel" | "context" | "discovery";
@@ -31,6 +34,9 @@ export default function ArtistSearch({ variant, placeholder = "Search an artistâ
   const picking = useRef(false);
   const [source, setSource] = useState<"auto" | "deezer">("auto");
   const { results, loading, error, retry } = useArtistSearch(query, excludeId, source);
+  const reducedMotion = useReducedEffects();
+  const slowSearch = useDelayedBusy(loading, 3000, JSON.stringify([query.trim(), source]));
+  const showBeam = slowSearch && reducedMotion === false;
   const searching = query.trim().length >= 2;
   const expanded = open && searching && !selected;
   const canPick = !loading && !error && !selected;
@@ -89,12 +95,13 @@ export default function ArtistSearch({ variant, placeholder = "Search an artistâ
       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
     }}>
       <label className="sr-only" htmlFor={id}>{label}</label>
+      <BorderBeam className="search-beam" size="line" colorVariant="mono" theme="dark" strength={0.45} active={showBeam}>
       <div className="search-field glass">
         <SearchIcon size={variant === "hero" ? 18 : 14} className="search-glyph" />
         <input ref={inputRef} id={id} data-omni-search role="combobox" aria-autocomplete="list"
           aria-expanded={expanded} aria-controls={expanded ? `${id}-results` : undefined}
           aria-activedescendant={expanded && activeArtist ? `${id}-option-${activeArtist.id}` : undefined}
-          aria-describedby={`${id}-status`} autoComplete="off" value={query} placeholder={placeholder}
+          aria-describedby={`${id}-status`} aria-busy={loading || !!selected} autoComplete="off" value={query} placeholder={placeholder}
           spellCheck={false} autoFocus={autoFocus} readOnly={!!selected}
           onChange={(e) => { updateQuery(e.target.value); setActive(-1); setOpen(true); setPickError(""); setSource("auto"); }}
           onFocus={() => setOpen(true)} onKeyDown={(e) => {
@@ -113,11 +120,12 @@ export default function ArtistSearch({ variant, placeholder = "Search an artistâ
               if (canPick && results.length) void pick(activeArtist ?? results[0]);
             }
           }} />
-        {(loading || selected) && <span className="search-spinner" aria-hidden="true" />}
+        {((loading && !showBeam) || selected) && <span className="search-spinner" aria-hidden="true" />}
         {query && !selected && <button type="button" className="search-clear" aria-label="Clear artist search" onClick={() => {
           updateQuery(""); setActive(-1); setPickError(""); inputRef.current?.focus();
         }}>Ã—</button>}
       </div>
+      </BorderBeam>
       <span id={`${id}-status`} className="sr-only" role="status">{status}</span>
       {pickError && <div className="search-pick-error"><p>{pickError}</p>{source !== "deezer" && <button type="button" className="search-retry" onClick={() => { setSource("deezer"); setPickError(""); setActive(-1); setOpen(true); inputRef.current?.focus(); }}>Search directly</button>}</div>}
       {open && !query.trim() && !selected && idleContent && <div className="search-results search-idle glass scrollbar-slim" style={{ backdropFilter: "blur(40px) saturate(120%)", WebkitBackdropFilter: "blur(40px) saturate(120%)" }}>{idleContent}</div>}

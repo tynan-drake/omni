@@ -33,7 +33,8 @@ interface GraphState extends GraphSnapshot {
   selectedIds: number[];
   addSeed: (artist: ArtistRef & { accent: string }) => void;
   applyLineage: (parentId: number, result: LineageResult) => void;
-  applyBridge: (result: BridgeResult) => string | null;
+  applyBridge: (result: BridgeResult, existingId?: string, pathCount?: number) => string | null;
+  revealBridgePath: (id: string) => void;
   renameBridge: (id: string, name: string) => void;
   deleteBridge: (id: string) => void;
   setActiveBridge: (id: string | null) => void;
@@ -389,16 +390,20 @@ export const useGraph = create<GraphState>((set, get) => ({
       };
     }),
 
-  applyBridge: (result) => {
+  applyBridge: (result, existingId, pathCount = 1) => {
     if (result.status !== "found" || !result.paths.length) return null;
-    const bridgeId = makeBridgeId();
+    const bridgeId = existingId ?? makeBridgeId();
+    const rankedPaths = [...result.paths].sort((a, b) => a.edgeIds.length - b.edgeIds.length);
+    const selectedPaths = rankedPaths.slice(0, Math.max(1, pathCount));
+    const selectedNodes = new Set(selectedPaths.flatMap(path => path.nodeIds));
+    const selectedEdges = new Set(selectedPaths.flatMap(path => path.edgeIds));
     const origin = `bridge:${bridgeId}`;
     set((state) => {
       const nodes = { ...state.nodes };
       const order = [...state.order];
       const edges = state.edges.map((edge) => ({ ...edge }));
       const spawnFrom = { ...state.spawnFrom };
-      for (const entry of result.entries) {
+      for (const entry of result.entries.filter(entry => selectedNodes.has(entry.id))) {
         const existing = nodes[entry.id];
         if (existing) {
           nodes[entry.id] = {
@@ -421,7 +426,7 @@ export const useGraph = create<GraphState>((set, get) => ({
       }
 
       const edgeIdMap = new Map<string, string>();
-      for (const relationship of result.edges) {
+      for (const relationship of result.edges.filter(edge => selectedEdges.has(edge.id))) {
         const existing = edges.find(
           (edge) =>
             edge.from === relationship.from &&
@@ -441,7 +446,7 @@ export const useGraph = create<GraphState>((set, get) => ({
           edgeIdMap.set(relationship.id, id);
         }
       }
-      const paths = result.paths.map((path) => ({
+      const paths = selectedPaths.map((path) => ({
         ...path,
         edgeIds: path.edgeIds
           .map((id) => edgeIdMap.get(id))
@@ -454,7 +459,8 @@ export const useGraph = create<GraphState>((set, get) => ({
       const now = Date.now();
       const bridge: ArtistBridge = {
         id: bridgeId,
-        name: `${a} ↔ ${b}`,
+        name: state.bridges[bridgeId]?.name ?? `${a} ↔ ${b}`,
+        routeOptions: { ...result, paths: rankedPaths },
         endpointIds: result.endpoints,
         mode: result.mode,
         generationSource: result.generationSource,
@@ -462,7 +468,7 @@ export const useGraph = create<GraphState>((set, get) => ({
         paths,
         nodeIds,
         edgeIds,
-        createdAt: now,
+        createdAt: state.bridges[bridgeId]?.createdAt ?? now,
         updatedAt: now,
       };
       return {
@@ -471,12 +477,18 @@ export const useGraph = create<GraphState>((set, get) => ({
         edges,
         spawnFrom,
         bridges: { ...state.bridges, [bridgeId]: bridge },
-        bridgeOrder: [...state.bridgeOrder, bridgeId],
+        bridgeOrder: state.bridgeOrder.includes(bridgeId) ? state.bridgeOrder : [...state.bridgeOrder, bridgeId],
         activeBridgeId: bridgeId,
         lastSource: result.generationSource,
       };
     });
     return bridgeId;
+  },
+
+  revealBridgePath: (id) => {
+    const bridge = get().bridges[id];
+    if (!bridge?.routeOptions || bridge.paths.length >= bridge.routeOptions.paths.length) return;
+    get().applyBridge(bridge.routeOptions, id, bridge.paths.length + 1);
   },
 
   renameBridge: (id, rawName) =>
@@ -542,12 +554,28 @@ export const useGraph = create<GraphState>((set, get) => ({
       return { selectedIds, selectedId: selectedIds.at(-1) ?? null };
     }),
   hydrate: (snapshot) => {
-    const graph = snapshot ?? emptyGraph();
+    let graph = snapshot ?? emptyGraph();
+    const upgrades = Object.values(graph.bridges).filter(bridge => !bridge.routeOptions && bridge.paths.length > 1).map(bridge => ({
+      bridge,
+      result: {
+        status: "found" as const, mode: bridge.mode, generationSource: bridge.generationSource,
+        degraded: bridge.degraded, endpoints: bridge.endpointIds,
+        entries: bridge.nodeIds.flatMap(id => graph.nodes[id] ? [graph.nodes[id]] : []),
+        edges: graph.edges.filter(edge => bridge.edgeIds.includes(edge.id)).map(edge => ({ ...edge, kind: relationshipOf(edge.kind) as Exclude<RelationshipKind, "peer">, reason: edge.reason ?? "", sources: edge.sources ?? [] })),
+        paths: bridge.paths,
+      },
+    }));
+    for (const { bridge } of upgrades) graph = deleteBridgeFromData(graph, bridge.id);
     set({
       ...graph,
       selectedIds: graph.selectedId === null ? [] : [graph.selectedId],
       hydrated: true,
     });
+    for (const { bridge, result } of upgrades) {
+      get().applyBridge(result, bridge.id);
+      set(state => ({ bridges: { ...state.bridges, [bridge.id]: { ...state.bridges[bridge.id], name: bridge.name, createdAt: bridge.createdAt } } }));
+    }
+    if (upgrades.length) set({ activeBridgeId: snapshot?.activeBridgeId ?? null, bridgeOrder: snapshot?.bridgeOrder ?? [] });
   },
   snapshot: () => {
     const state = get();
