@@ -1,5 +1,7 @@
 "use client";
 
+import { connectionCamera } from "@/lib/connection-camera";
+
 import { searchArrivalPoint } from "@/lib/search-flight";
 import { neutralizePurple } from "@/lib/color-utils";
 
@@ -307,6 +309,37 @@ export default function Canvas() {
         setDiscoverySeed(nodeId);
         sel.interrupt().call(behavior.transform, zoomIdentity.translate(x, y).scale(size / diameter));
       },
+      frameConnection: (sourceId, offset) => {
+        cancelSearchFlight?.();
+        const orb = getOrbEls().get(sourceId)?.getBoundingClientRect();
+        if (!orb) return () => {};
+        const current = transformRef.current;
+        const getTarget = () => {
+          const latest = getOrbEls().get(sourceId)?.getBoundingClientRect() ?? orb;
+          const live = transformRef.current;
+          const point = getPositions().get(sourceId);
+          const source = { x: point?.x ?? (latest.x + latest.width / 2 - live.x) / live.k, y: point?.y ?? (latest.y + latest.height / 2 - live.y) / live.k, radius: point?.r ?? latest.width / (2 * live.k) };
+          return connectionCamera(source, { x: source.x + offset.x, y: source.y + offset.y, radius: offset.size / 2 }, container.getBoundingClientRect(), current.k);
+        };
+        const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        sel.interrupt();
+        if (reduced) {
+          const target = getTarget();
+          sel.call(behavior.transform, zoomIdentity.translate(target.x, target.y).scale(target.k));
+        } else {
+          // Follow any final physics settling during the glide, without relocating nodes.
+          sel.transition().duration(900).tween("connection-camera", () => progress => {
+            const target = getTarget();
+            const interpolated = zoomIdentity.translate(
+              current.x + (target.x - current.x) * progress,
+              current.y + (target.y - current.y) * progress,
+            ).scale(current.k + (target.k - current.k) * progress);
+            sel.property("__zoom", interpolated);
+            applyTransform(interpolated);
+          });
+        }
+        return () => { sel.interrupt(); };
+      },
       fitAll,
       fitNodes,
       flyTo,
@@ -493,6 +526,7 @@ export default function Canvas() {
     useUi.getState().openMenu(null);
     useUi.getState().openCanvasContextMenu(null);
     useGraph.getState().select(null);
+    useGraph.getState().setActiveBridge(null);
   };
 
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {

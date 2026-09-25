@@ -15,7 +15,9 @@ import { preloadMitosisImages } from "@/lib/mitosis-assets";
 import { playSplitAudio } from "@/lib/split-audio";
 import { useGraph } from "./graph";
 import { useHistory } from "./history";
-import { useUi } from "./ui";
+import { useUi, type BridgeRequestState } from "./ui";
+import { getOrbEls } from "@/lib/registry";
+import { stageSearchPosition } from "@/lib/simulation";
 
 interface ArtistCacheState {
   details: Record<number, ArtistDetails>;
@@ -124,7 +126,8 @@ export async function expand(nodeId: number, direction: Direction): Promise<void
 export async function connectArtists(
   fromId: number,
   target: ArtistRef,
-  mode: BridgeMode = "influence"
+  mode: BridgeMode = "influence",
+  destination?: { x: number; y: number }
 ): Promise<void> {
   const graph = useGraph.getState();
   const from = graph.nodes[fromId];
@@ -148,30 +151,22 @@ export async function connectArtists(
     return;
   }
 
-  const wasOnCanvas = Boolean(graph.nodes[target.id]);
-  if (!wasOnCanvas) {
-    const details = await fetchDetails(target.id);
-    useGraph.getState().addSeed({
-      ...target,
-      accent: details?.accent ?? "#a3a3a3",
-    });
-    useHistory.getState().visit(target);
-  }
-
   const ui = useUi.getState();
-  ui.startConnecting(fromId);
-  ui.setBridgeRequest({
-    fromId,
-    target,
-    mode,
-    status: "loading",
+  if (ui.connectingFrom !== fromId) ui.startConnecting(fromId);
+  const request: BridgeRequestState = {
+    fromId, target, mode, status: "loading",
     message: mode === "influence" ? "Tracing influence paths…" : "Mapping broader musical ties…",
-  });
+  };
+  ui.setBridgeRequest(request);
+  // Cancel, change artist, or a newer request invalidates this response.
+  const isCurrent = () => useUi.getState().bridgeRequest === request &&
+    useUi.getState().connectingFrom === fromId && Boolean(useGraph.getState().nodes[fromId]);
 
   try {
     const response = await fetch("/api/bridge", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(60000),
       body: JSON.stringify({
         a: { id: from.id, name: from.name },
         b: { id: target.id, name: target.name },
@@ -180,6 +175,7 @@ export async function connectArtists(
     });
     if (!response.ok) throw new Error(`bridge HTTP ${response.status}`);
     const result = (await response.json()) as BridgeResult;
+    if (!isCurrent()) return;
     if (result.status === "no_path") {
       useUi.getState().setBridgeRequest({
         fromId,
@@ -192,16 +188,23 @@ export async function connectArtists(
       });
       return;
     }
+    if (!result.paths.length) throw new Error("empty bridge result");
+    if (!useGraph.getState().nodes[target.id]) {
+      if (destination) stageSearchPosition(target.id, destination);
+      useGraph.getState().addSeed({ ...target, accent: "#a3a3a3" });
+      useHistory.getState().visit(target);
+    }
     const bridgeId = useGraph.getState().applyBridge(result);
     if (!bridgeId) throw new Error("empty bridge result");
     const bridge = useGraph.getState().bridges[bridgeId];
     useUi.getState().cancelConnecting();
-    useUi.getState().setNavPanel("bridges");
+    requestAnimationFrame(() => getOrbEls().get(fromId)?.focus({ preventScroll: true }));
     useUi
       .getState()
       .showToast(result.degraded ? "Built a similarity bridge" : "Bridge added to the canvas");
     setTimeout(() => canvas.fitNodes(bridge.nodeIds), 650);
   } catch (error) {
+    if (!isCurrent()) return;
     console.error("connect failed", error);
     useUi.getState().setBridgeRequest({
       fromId,

@@ -17,6 +17,7 @@ export interface ViewportTransform {
 interface CanvasController {
   revealArtist: (artist: ArtistRef) => Promise<void>;
   adoptDiscovery: (nodeId: number, x: number, y: number, size: number) => void;
+  frameConnection: (sourceId: number, offset: { x: number; y: number; size: number }) => () => void;
   fitAll: () => void;
   fitNodes: (ids: number[]) => void;
   flyTo: (nodeId: number) => void;
@@ -29,6 +30,7 @@ interface CanvasController {
 let impl: CanvasController = {
   revealArtist: async () => {},
   adoptDiscovery: () => {},
+  frameConnection: () => () => {},
   fitAll: () => {},
   fitNodes: () => {},
   flyTo: () => {},
@@ -44,6 +46,7 @@ export function registerCanvasController(c: CanvasController): void {
 export const canvas = {
   revealArtist: (artist: ArtistRef) => impl.revealArtist(artist),
   adoptDiscovery: (nodeId: number, x: number, y: number, size: number) => impl.adoptDiscovery(nodeId, x, y, size),
+  frameConnection: (sourceId: number, offset: { x: number; y: number; size: number }) => impl.frameConnection(sourceId, offset),
   fitAll: () => impl.fitAll(),
   fitNodes: (ids: number[]) => impl.fitNodes(ids),
   flyTo: (id: number) => impl.flyTo(id),

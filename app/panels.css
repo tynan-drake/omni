@@ -679,3 +679,31 @@ body:has(.selection-status) .playlist-panel {
   body:has(.selection-status) .now-playing { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 176px); }
   body:has(.canvas-search .search-results) .now-playing { top: 76px; bottom: auto; }
 }
+
+/* Connection controls follow the real canvas orb; only the search accepts input. */
+.linked-orb-layer { position: fixed; inset: 0; z-index: 45; pointer-events: none; }
+.linked-orb-target { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; }
+.linked-orb-target > div, .linked-orb-portrait, .linked-orb-placeholder { width: 100%; height: 100%; border-radius: 50%; }
+.linked-orb-portrait { position: relative; overflow: hidden; background: #262626; outline: 1px solid #ffffff30; }
+.linked-orb-portrait > span { position: absolute; inset: 0; display: grid; place-items: center; font-size: 28px; }
+.linked-orb-portrait img { position: relative; width: 100%; height: 100%; object-fit: cover; }
+.linked-orb-placeholder { display: grid; place-items: center; border: 1px dashed #b9c4cf80; background: radial-gradient(circle at 30% 20%, #22282c, #101112 70%); color: #a8b5c3; font-size: 30px; font-weight: 200; }
+.linked-orb-tether { position: absolute; height: 1px; transform-origin: left center; }
+.linked-orb-tether-track { position: absolute; inset: 0; }
+.linked-orb-tether-track i { display: block; width: 100%; height: 1px; background-image: repeating-linear-gradient(to right, #b5becb99 0 4px, transparent 4px 10px); }
+.linked-orb-composer { position: absolute; width: min(270px, calc(100vw - 24px)); color: #e5e5e5; }
+.linked-orb-search { pointer-events: auto; padding: 10px; border-radius: 18px; background: #151515f5; border: 1px solid #ffffff14; box-shadow: 0 8px 24px #0006; text-align: center; }
+.linked-orb-heading { display: flex; align-items: center; gap: 8px; margin: 0 0 8px 4px; text-align: left; }
+.linked-orb-heading strong { flex: 1; font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
+.linked-orb-heading button { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; color: #aaa; }
+.linked-orb-search .search-field { height: 40px; border-radius: 22px; background: #222; border: 1px solid #ffffff26; }
+.linked-orb-search .search-field:focus-within { border-color: #b9d5e5; }
+.linked-orb-search .search-results { max-height: min(220px, 28dvh); overflow-y: auto; text-align: left; }
+.linked-orb-hint, .linked-orb-status { color: #aaa; font-size: 11px; line-height: 1.6; margin-top: 10px; }
+.linked-orb-status:empty { margin: 0; }
+.linked-orb-cancel, .linked-orb-recovery > button { min-height: 36px; padding: 8px 12px; font-size: 11px; color: #bbb; cursor: pointer; }
+.linked-orb-recovery { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+.linked-orb-layer button:focus-visible { outline: 2px solid #b9d5e5; outline-offset: 3px; }
+.linked-orb-target.is-loading { outline: 2px solid #b9d5e580; outline-offset: 5px; }
+/* The developer controls otherwise obscure the inline composer on narrow previews. */
+body:has(.linked-orb-layer) .dialkit-root { visibility: hidden; }

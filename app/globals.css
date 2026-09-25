@@ -1983,6 +1983,36 @@ body {
 
 /* ------------------------------------------------------- bridge maps */
 
+.bridge-spotlight {
+  position: fixed;
+  top: calc(max(16px, env(safe-area-inset-top)) + 60px);
+  left: 50%;
+  translate: -50% 0;
+  z-index: 59;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 8px 8px 8px 16px;
+  border-radius: 20px;
+}
+.bridge-spotlight-info { display: grid; gap: 3px; min-width: 0; }
+.bridge-spotlight-info span { color: var(--ink-dim); font-size: 11px; }
+.bridge-spotlight-info strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+}
+.bridge-spotlight .dock-action { flex-shrink: 0; background: #ffffff0d; }
+.bridge-spotlight .dock-action:hover { background: #ffffff1c; }
+@media (max-width: 600px) {
+  .bridge-spotlight { gap: 4px; flex-direction: column; text-align: center; padding: 10px; }
+  .bridge-spotlight-info { max-width: 100%; }
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

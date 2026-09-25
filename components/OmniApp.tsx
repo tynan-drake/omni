@@ -12,6 +12,7 @@ import NowPlaying from "./NowPlaying";
 import OrbDials from "./OrbDials";
 import OrbFilters from "./OrbFilters";
 import OrbMenu from "./OrbMenu";
+import LinkedOrb from "./LinkedOrb";
 import PlaylistBuilder from "./PlaylistBuilder";
 import Shortcuts from "./Shortcuts";
 import ShortcutsOverlay from "./ShortcutsOverlay";
@@ -39,6 +40,7 @@ export default function OmniApp() {
         <Sidebar />
         {hasNodes && <ZoomBar />}
       </div>
+      {!discoveryOpen && <LinkedOrb />}
       <NowPlaying />
       <Landing />
       <Toast />

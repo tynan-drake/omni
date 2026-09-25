@@ -36,7 +36,7 @@ export default function ArtistSearch({ variant, placeholder = "Search an artist�
   const canPick = !loading && !error && !selected;
   const activeArtist = canPick ? results[active] : undefined;
   const sourceArtist = activeArtist ?? results[0];
-  const status = selected ? `Flying to ${selected.name}…` : pickError || error ||
+  const status = selected ? `${onPick ? "Selecting" : "Flying to"} ${selected.name}…` : pickError || error ||
     (searching ? loading ? "Finding artists…" : results.length ? `${results.length} artists found` : `No artists found for “${query.trim()}”. Try another name.` : query ? "Type at least 2 characters" : "");
 
   useEffect(() => {
@@ -143,7 +143,7 @@ export default function ArtistSearch({ variant, placeholder = "Search an artist�
         </div>}
         {loading && !results.length && <div className="search-skeletons" aria-hidden="true">{[0, 1, 2].map((n) => <div key={n} className="search-skeleton"><i /><span /></div>)}</div>}
         {error && <button type="button" className="search-retry" onClick={retry}>Try again</button>}
-        {!loading && !error && results.length > 0 && <p className="search-key-hint" aria-hidden="true">↑ ↓ to browse <span>↵ to explore</span></p>}
+        {!loading && !error && results.length > 0 && <p className="search-key-hint" aria-hidden="true">↑ ↓ to browse <span>↵ to {onPick ? "select" : "explore"}</span></p>}
       </div>}
     </div>
   );

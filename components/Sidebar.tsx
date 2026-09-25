@@ -14,6 +14,8 @@ export default function Sidebar() {
   const hasNodes = useGraph((s) => s.order.length > 0);
   const navPanel = useUi((s) => s.navPanel);
   const playlistOpen = useUi((s) => s.playlistOpen);
+  const activeBridge = useGraph((s) => s.activeBridgeId ? s.bridges[s.activeBridgeId] : null);
+  const connectingFrom = useUi((s) => s.connectingFrom);
   const search = useRef<HTMLDivElement>(null);
 
   useEffect(hydrateHistory, []);
@@ -51,6 +53,21 @@ export default function Sidebar() {
       }}>
         <ArtistSearch variant="discovery" label="Find an artist" placeholder="Find an artist…" idleContent={<RecentArtists />} />
       </div>
+
+      {activeBridge && connectingFrom === null && (
+        <aside className="bridge-spotlight glass" aria-label="Bridge spotlight">
+          <div className="bridge-spotlight-info">
+            <span>Bridge spotlight</span>
+            <strong title={activeBridge.name}>{activeBridge.name}</strong>
+          </div>
+          <button type="button" className="dock-action" onClick={() => {
+            useGraph.getState().setActiveBridge(null);
+            search.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+          }}>
+            <CloseIcon size={16} /> Back to exploration
+          </button>
+        </aside>
+      )}
 
       {navPanel === "bridges" && <div id="artist-connections" className="nav-flyout glass is-bridges"
         role="region" aria-label="Artist connections" onKeyDown={(event) => {

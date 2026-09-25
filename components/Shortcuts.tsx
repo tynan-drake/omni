@@ -39,6 +39,12 @@ export default function Shortcuts() {
       }
 
       if (e.key === "Escape") {
+        // Dismiss a foreground interaction first; a second Escape leaves the spotlight.
+        if (!ui.paletteOpen && !ui.playlistOpen && !ui.shortcutsOpen &&
+            ui.detailFor === null && ui.menuFor === null && ui.navPanel === null &&
+            ui.connectingFrom === null && !ui.canvasContextMenu) {
+          useGraph.getState().setActiveBridge(null);
+        }
         ui.closeAll();
         ui.setCanvasTool("pan");
         useGraph.getState().select(null);

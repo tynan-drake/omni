@@ -203,7 +203,7 @@ export const useUi = create<UiState>((set, get) => ({
     set({
       connectingFrom: id,
       playlistOpen: false,
-      navPanel: "bridges",
+      navPanel: null,
       menuFor: null,
       detailFor: null,
       canvasContextMenu: null,

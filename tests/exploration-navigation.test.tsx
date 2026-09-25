@@ -23,6 +23,45 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
+function spotlightBridge() {
+  useUi.getState().resumeExploration();
+  useGraph.setState({
+    activeBridgeId: "saved-bridge",
+    bridgeOrder: ["saved-bridge"],
+    bridges: {
+      "saved-bridge": {
+        id: "saved-bridge", name: "Artist one → Artist two", endpointIds: [1, 2],
+        mode: "influence", generationSource: "curated", degraded: false,
+        paths: [], nodeIds: [1, 2], edgeIds: [], createdAt: 1, updatedAt: 1,
+      },
+    },
+  });
+}
+
+it("exits the bridge spotlight without deleting its saved graph and can spotlight it again", () => {
+  spotlightBridge();
+  const before = useGraph.getState().snapshot();
+  render(<Sidebar />);
+  fireEvent.click(screen.getByRole("button", { name: "Back to exploration" }));
+  expect(useGraph.getState().snapshot()).toEqual({ ...before, activeBridgeId: null });
+  expect(screen.queryByRole("complementary", { name: "Bridge spotlight" })).toBeNull();
+  expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Find an artist" }));
+  act(() => useGraph.getState().setActiveBridge("saved-bridge"));
+  expect(screen.getByRole("button", { name: "Back to exploration" })).toBeTruthy();
+});
+
+it("Escape closes a foreground panel before dismissing the bridge spotlight", () => {
+  spotlightBridge();
+  useUi.getState().setPlaylistOpen(true);
+  render(<Shortcuts />);
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(useUi.getState().playlistOpen).toBe(false);
+  expect(useGraph.getState().activeBridgeId).toBe("saved-bridge");
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(useGraph.getState().activeBridgeId).toBeNull();
+  expect(useGraph.getState().bridgeOrder).toEqual(["saved-bridge"]);
+});
+
 it("Home preserves the graph and selection while closing canvas panels; resume restores exploration mode", () => {
   render(<><Sidebar /><Shortcuts /></>);
   fireEvent.click(screen.getByRole("button", { name: "Create playlist" }));
