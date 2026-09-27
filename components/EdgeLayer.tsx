@@ -2,6 +2,8 @@
 
 import { neutralizePurple } from "@/lib/color-utils";
 
+import { edgeMatchesLegend, type CanvasLegendRole } from "@/lib/canvas-legend";
+
 import { memo } from "react";
 import BridgeSignals from "./BridgeSignals";
 import { mixHex } from "@/lib/color-utils";
@@ -13,7 +15,7 @@ import { nodeMatchesFilter, useUi } from "@/store/ui";
  * SVG edge elements. Line endpoints are written imperatively each simulation
  * tick (see Canvas); React only handles add/remove and styling.
  */
-function EdgeLayerImpl() {
+function EdgeLayerImpl({ highlightedRole = null }: { highlightedRole?: CanvasLegendRole | null }) {
   const nodes = useGraph((s) => s.nodes);
   const edges = useGraph((s) => s.edges);
   const filter = useUi((s) => s.filter);
@@ -47,7 +49,7 @@ function EdgeLayerImpl() {
         const dimmed =
           !nodeMatchesFilter(filter, from) ||
           !nodeMatchesFilter(filter, to) ||
-          Boolean(activeBridge && !inBridge);
+          (highlightedRole ? !edgeMatchesLegend(edge, highlightedRole) : Boolean(activeBridge && !inBridge));
         return (
           <g
             key={edge.id}
@@ -78,7 +80,7 @@ function EdgeLayerImpl() {
           </g>
         );
       })}
-      <BridgeSignals />
+      <g className={highlightedRole && highlightedRole !== "bridge" ? "opacity-10" : "opacity-100"}><BridgeSignals /></g>
     </>
   );
 }

@@ -208,10 +208,9 @@ export async function exportToSpotify(
   await Promise.all(workers);
 
   onProgress({ phase: "creating", matched: uris.length, total: tracks.length });
-  const me = await api<{ id: string }>(token, "/me");
   const playlist = await api<{ id: string; external_urls: { spotify: string } }>(
     token,
-    `/users/${encodeURIComponent(me.id)}/playlists`,
+    "/me/playlists",
     {
       method: "POST",
       body: JSON.stringify({ name, description, public: false }),
@@ -219,7 +218,7 @@ export async function exportToSpotify(
   );
 
   for (let i = 0; i < uris.length; i += 100) {
-    await api(token, `/playlists/${playlist.id}/tracks`, {
+    await api(token, `/playlists/${playlist.id}/items`, {
       method: "POST",
       body: JSON.stringify({ uris: uris.slice(i, i + 100) }),
     });

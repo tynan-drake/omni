@@ -140,9 +140,7 @@ export default function ArtistSearch({ variant, placeholder = "Search an artistâ
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={artist.picture} alt="" onError={(e) => { e.currentTarget.style.opacity = "0"; }} />
             </span>
-            <span className="search-result-name">{artist.name}
-              <small>{artist.source === "spotify" ? "Spotify artist" : artist.fans !== undefined ? `${new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(artist.fans)} Deezer fans` : "Artist"}</small>
-            </span>
+            <span className="search-result-name">{artist.name}</span>
             <span className="search-result-enter" aria-hidden="true">â†µ</span>
           </div>)}
         </div>

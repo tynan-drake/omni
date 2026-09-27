@@ -4,11 +4,14 @@ Set these server environment variables in `.env.local` and restart Next.js:
 
 ```dotenv
 SPOTIFY_CLIENT_ID=your_spotify_app_client_id
+NEXT_PUBLIC_SPOTIFY_CLIENT_ID=your_spotify_app_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_app_client_secret
 SPOTIFY_MARKET=US
 ```
 
 Create or use an app at https://developer.spotify.com/dashboard. Spotify currently requires the owner of a development-mode app to have Premium. `NEXT_PUBLIC_SPOTIFY_CLIENT_ID`, used by playlist export, can also supply the client ID. The secret must never use the `NEXT_PUBLIC_` prefix. Catalogue search uses client credentials; visitors do not need to sign in.
+
+For playlist export, set both client ID entries to the same value. Register `http://127.0.0.1:3000/callback/spotify` as a redirect URI in the Spotify app settings, and open the local app at `http://127.0.0.1:3000`. Spotify does not accept `localhost` redirect URIs. For a deployed app, register its exact HTTPS origin followed by `/callback/spotify` and configure the environment before building. Development-mode test accounts must be allowed access in the Spotify dashboard. Playlist export asks the user to sign in and creates a private playlist using `POST /me/playlists`, then adds matched tracks through `POST /playlists/{id}/items`.
 
 Artist suggestions retain Spotify's order. Missing credentials, empty responses, rate limits, or Spotify failures fall back to Deezer search. Spotify results show attribution and an external link for the active result; they do not display Deezer fan counts.
 

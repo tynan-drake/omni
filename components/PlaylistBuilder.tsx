@@ -151,6 +151,7 @@ function Builder() {
   };
 
   const totalSec = tracks?.reduce((s, t) => s + t.duration, 0) ?? 0;
+  const artistCount = new Set(tracks?.map((track) => track.artistId)).size;
 
   return (
     <motion.aside
@@ -179,8 +180,7 @@ function Builder() {
       </div>
 
       <p className="playlist-sub">
-        {artists.length} {scoped ? "selected " : ""}artist{artists.length === 1 ? "" : "s"} ·{" "}
-        {playlistName}
+        {seedName} universe
       </p>
 
       <div className="playlist-params">
@@ -225,7 +225,7 @@ function Builder() {
       {tracks && (
         <>
           <div className="playlist-total">
-            {tracks.length} tracks · {Math.round(totalSec / 60)} min
+            {tracks.length} tracks · {artistCount} artist{artistCount === 1 ? "" : "s"} · {Math.round(totalSec / 60)} min
           </div>
           <div className="playlist-list scrollbar-slim">
             {tracks.map((t, i) => (

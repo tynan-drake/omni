@@ -1,5 +1,7 @@
 "use client";
 
+import { canvasLegendMembers, type CanvasLegendRole } from "@/lib/canvas-legend";
+
 import { connectionCamera } from "@/lib/connection-camera";
 
 import { searchArrivalPoint } from "@/lib/search-flight";
@@ -64,6 +66,8 @@ export default function Canvas() {
   const [middlePanning, setMiddlePanning] = useState(false);
   const [discoverySeed, setDiscoverySeed] = useState<number | null>(null);
 
+  const [legendRole, setLegendRole] = useState<CanvasLegendRole | null>(null);
+
   const nodes = useGraph((s) => s.nodes);
   const order = useGraph((s) => s.order);
   const edges = useGraph((s) => s.edges);
@@ -89,16 +93,15 @@ export default function Canvas() {
     () => new Set(activeBridge?.endpointIds ?? []),
     [activeBridge]
   );
-  const lineageRoles = useMemo(
-    () => ({
-      root: edges.some((edge) => edge.kind === "back"),
-      branch: edges.some((edge) => edge.kind === "forward"),
-      bridge: edges.some((edge) =>
-        edge.origins?.some((origin) => origin.startsWith("bridge:"))
-      ),
-    }),
-    [edges]
-  );
+  const legendMembers = useMemo(() => canvasLegendMembers(nodes, edges), [nodes, edges]);
+  const lineageRoles = {
+    root: legendMembers.root.size > 0,
+    branch: legendMembers.branch.size > 0,
+    bridge: legendMembers.bridge.size > 0,
+  };
+  const highlightedRole = legendRole && lineageRoles[legendRole] ? legendRole : null;
+  const highlightedIds = highlightedRole ? legendMembers[highlightedRole] : null;
+  const legendButtonClass = "pointer-events-auto min-h-8 cursor-pointer rounded-md px-1 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current aria-pressed:bg-white/10 aria-pressed:underline aria-pressed:underline-offset-4 motion-reduce:transition-none";
   const splitPlans = useMemo(
     () =>
       splitFormation
@@ -160,7 +163,7 @@ export default function Canvas() {
           return true;
         }
         const target = event.target as Element | null;
-        if (target?.closest?.(".orb")) return false;
+        if (target?.closest?.(".orb, .edge-legend")) return false;
         return useUi.getState().canvasTool === "pan";
       })
       .on("zoom", (event) => applyTransform(event.transform));
@@ -637,37 +640,61 @@ export default function Canvas() {
     >
       <svg className="edge-svg">
         <g ref={gRef}>
-          <EdgeLayer />
+          <EdgeLayer highlightedRole={highlightedRole} />
         </g>
       </svg>
       {(lineageRoles.root || lineageRoles.branch || lineageRoles.bridge) && (
-        <aside className="edge-legend glass" aria-label="Connection line legend">
+        <aside
+          className="edge-legend glass pointer-events-auto!"
+          aria-label="Highlight artists by connection type"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+          onContextMenu={(event) => event.stopPropagation()}
+        >
           {lineageRoles.root && (
-            <span className="edge-legend-item is-root">
+            <button
+              type="button"
+              className={`edge-legend-item is-root ${legendButtonClass} ${highlightedRole && highlightedRole !== "root" ? "opacity-50" : "opacity-100"}`}
+              aria-pressed={highlightedRole === "root"}
+              title={highlightedRole === "root" ? "Clear highlight" : "Highlight roots"}
+              onClick={() => setLegendRole(highlightedRole === "root" ? null : "root")}
+            >
               <svg viewBox="0 0 28 8" aria-hidden="true">
                 <line className="edge-legend-root-base" x1="1" y1="4" x2="27" y2="4" />
                 <line className="edge-legend-root-core" x1="1" y1="4" x2="27" y2="4" />
               </svg>
               Roots
-            </span>
+            </button>
           )}
           {lineageRoles.branch && (
-            <span className="edge-legend-item is-branch">
+            <button
+              type="button"
+              className={`edge-legend-item is-branch ${legendButtonClass} ${highlightedRole && highlightedRole !== "branch" ? "opacity-50" : "opacity-100"}`}
+              aria-pressed={highlightedRole === "branch"}
+              title={highlightedRole === "branch" ? "Clear highlight" : "Highlight branches"}
+              onClick={() => setLegendRole(highlightedRole === "branch" ? null : "branch")}
+            >
               <svg viewBox="0 0 28 8" aria-hidden="true">
                 <line className="edge-legend-branch-guide" x1="1" y1="4" x2="27" y2="4" />
                 <line className="edge-legend-branch-buds" x1="1" y1="4" x2="27" y2="4" />
               </svg>
               Branches
-            </span>
+            </button>
           )}
           {lineageRoles.bridge && (
-            <span className="edge-legend-item is-bridge">
+            <button
+              type="button"
+              className={`edge-legend-item is-bridge ${legendButtonClass} ${highlightedRole && highlightedRole !== "bridge" ? "opacity-50" : "opacity-100"}`}
+              aria-pressed={highlightedRole === "bridge"}
+              title={highlightedRole === "bridge" ? "Clear highlight" : "Highlight bridges"}
+              onClick={() => setLegendRole(highlightedRole === "bridge" ? null : "bridge")}
+            >
               <svg viewBox="0 0 28 8" aria-hidden="true">
                 <line className="edge-legend-bridge-rail" x1="1" y1="4" x2="27" y2="4" />
                 <line className="edge-legend-bridge-signal" x1="1" y1="4" x2="27" y2="4" />
               </svg>
               Bridges
-            </span>
+            </button>
           )}
         </aside>
       )}
@@ -684,7 +711,7 @@ export default function Canvas() {
               fromDiscovery={id === discoverySeed}
               dimmed={
                 !nodeMatchesFilter(filter, node) ||
-                Boolean(activeBridgeId && !activeNodeIds.has(id))
+                (highlightedIds ? !highlightedIds.has(id) : Boolean(activeBridgeId && !activeNodeIds.has(id)))
               }
               selected={selectedIds.includes(id)}
               inBridge={Boolean(activeBridgeId && activeNodeIds.has(id))}
