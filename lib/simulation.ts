@@ -1,5 +1,8 @@
 "use client";
 
+import { bridgeLayoutTargets } from "./bridge-layout";
+import type { ArtistBridge } from "./types";
+
 import { connectionSpaceOffsets, type ConnectionSpace } from "./connection-space";
 
 import {
@@ -170,15 +173,20 @@ export function reserveConnectionSpace(sourceId: number, offset: { x: number; y:
 }
 const restoredPositions = new Map<number, { x: number; y: number }>();
 const searchOrigins = new Map<number, { x: number; y: number }>();
-let timelineTargets = new Map<number, number>();
+let bridgeTargets = new Map<number, { x: number; y: number }>();
 let temporalLinks: SimLink[] = [];
 
 const collideRadius = (d: SimNode) => d.r + physics.collidePadding;
 
 const linkDistance = (l: SimLink) =>
   l.peer ? physics.peerDistance : physics.linkDistance;
-const linkStrength = (l: SimLink) =>
-  l.peer ? physics.peerStrength : physics.linkStrength;
+const linkStrength = (l: SimLink) => {
+  const sourceId = typeof l.source === "number" ? l.source : l.source.id;
+  const targetId = typeof l.target === "number" ? l.target : l.target.id;
+  // Route targets own bridge spacing; short springs would fold long paths back.
+  if (bridgeTargets.has(sourceId) && bridgeTargets.has(targetId)) return 0.015;
+  return l.peer ? physics.peerStrength : physics.linkStrength;
+};
 
 const collide = forceCollide<SimNode>().radius(collideRadius).strength(0.85);
 
@@ -241,6 +249,7 @@ const temporalFlow: Force<SimNode, SimLink> = (alpha) => {
         ? simNodes.find((node) => node.id === link.target)
         : link.target;
     if (!source || !target) continue;
+    if (bridgeTargets.has(source.id) && bridgeTargets.has(target.id)) continue;
     const gap = (target.x ?? 0) - (source.x ?? 0);
     if (gap >= minimumGap) continue;
     const push = (minimumGap - gap) * strength * alpha;
@@ -299,11 +308,11 @@ function ensureSim(): Simulation<SimNode, SimLink> {
     .force("label-collision", labelCollision)
     .force(
       "x",
-      forceX<SimNode>((d) => timelineTargets.get(d.id) ?? searchOrigins.get(d.id)?.x ?? 0).strength((d) =>
-        timelineTargets.has(d.id) ? 0.085 : physics.gravity
+      forceX<SimNode>((d) => bridgeTargets.get(d.id)?.x ?? searchOrigins.get(d.id)?.x ?? 0).strength((d) =>
+        bridgeTargets.has(d.id) ? 0.65 : physics.gravity
       )
     )
-    .force("y", forceY<SimNode>((d) => searchOrigins.get(d.id)?.y ?? 0).strength(physics.gravity))
+    .force("y", forceY<SimNode>((d) => bridgeTargets.get(d.id)?.y ?? searchOrigins.get(d.id)?.y ?? 0).strength((d) => bridgeTargets.has(d.id) ? 0.65 : physics.gravity))
     .force("temporal", temporalFlow)
     .force("stir", stir)
     .velocityDecay(physics.friction)
@@ -359,13 +368,20 @@ export function stageSearchPosition(id: number, point: { x: number; y: number })
   searchOrigins.set(id, point);
 }
 
-export function setTimelineTargets(targets: Map<number, number>): void {
-  timelineTargets = new Map(targets);
-  const s = ensureSim();
-  (s.force("x") as ForceX<SimNode> | undefined)
-    ?.x((d) => timelineTargets.get(d.id) ?? searchOrigins.get(d.id)?.x ?? 0)
-    .strength((d) => (timelineTargets.has(d.id) ? 0.085 : physics.gravity));
-  s.alpha(Math.max(s.alpha(), 0.32)).restart();
+/** Apply stable route targets; ordinary canvas physics still handles collisions and dragging. */
+export function setBridgeLayouts(bridges: ArtistBridge[]): void {
+  const layouts = new Map(simNodes.map(node => [node.id, {
+    ...node, x: node.x ?? 0, y: node.y ?? 0,
+  }]));
+  const previous = bridgeTargets;
+  bridgeTargets = new Map();
+  for (const bridge of bridges) {
+    // Reuse previous anchors so adding a path doesn't move the whole route again.
+    const anchored = new Map([...layouts].map(([id, node]) => [id, { ...node, ...previous.get(id) }]));
+    for (const [id, point] of bridgeLayoutTargets(bridge, anchored)) bridgeTargets.set(id, point);
+  }
+  setPhysics({});
+  ensureSim().alpha(Math.max(ensureSim().alpha(), 0.8)).restart();
 }
 
 /**
@@ -563,9 +579,9 @@ export function setPhysics(next: Partial<OrbPhysics>): void {
     -physics.repulsion
   );
   (s.force("x") as ForceX<SimNode> | undefined)
-    ?.x((d) => timelineTargets.get(d.id) ?? searchOrigins.get(d.id)?.x ?? 0)
-    .strength((d) => (timelineTargets.has(d.id) ? 0.085 : physics.gravity));
-  (s.force("y") as ForceY<SimNode> | undefined)?.y((d) => searchOrigins.get(d.id)?.y ?? 0).strength(physics.gravity);
+    ?.x((d) => bridgeTargets.get(d.id)?.x ?? searchOrigins.get(d.id)?.x ?? 0)
+    .strength((d) => (bridgeTargets.has(d.id) ? 0.65 : physics.gravity));
+  (s.force("y") as ForceY<SimNode> | undefined)?.y((d) => bridgeTargets.get(d.id)?.y ?? searchOrigins.get(d.id)?.y ?? 0).strength((d) => bridgeTargets.has(d.id) ? 0.65 : physics.gravity);
   (s.force("link") as ForceLink<SimNode, SimLink> | undefined)
     ?.distance(linkDistance)
     .strength(linkStrength);
@@ -638,7 +654,7 @@ export function resetSimulation(): void {
   positions.clear();
   restoredPositions.clear();
   searchOrigins.clear();
-  timelineTargets.clear();
+  bridgeTargets.clear();
   temporalLinks = [];
   sim?.nodes([]);
   sim?.force("link", null);

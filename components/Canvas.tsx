@@ -29,7 +29,7 @@ import {
   getPositions,
   onSimTick,
   restorePositions,
-  setTimelineTargets,
+  setBridgeLayouts,
   syncGraph,
   stageSearchPosition,
 } from "@/lib/simulation";
@@ -74,6 +74,7 @@ export default function Canvas() {
   const spawnFrom = useGraph((s) => s.spawnFrom);
   const selectedIds = useGraph((s) => s.selectedIds);
   const activeBridgeId = useGraph((s) => s.activeBridgeId);
+  const bridges = useGraph((s) => s.bridges);
   const activeBridge = useGraph((s) =>
     s.activeBridgeId ? s.bridges[s.activeBridgeId] : null
   );
@@ -101,7 +102,7 @@ export default function Canvas() {
   };
   const highlightedRole = legendRole && lineageRoles[legendRole] ? legendRole : null;
   const highlightedIds = highlightedRole ? legendMembers[highlightedRole] : null;
-  const legendButtonClass = "pointer-events-auto min-h-8 cursor-pointer rounded-md px-1 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current aria-pressed:bg-white/10 aria-pressed:underline aria-pressed:underline-offset-4 motion-reduce:transition-none";
+  const legendButtonClass = "bg-(--surface) backdrop-blur-lg pointer-events-auto min-h-11 shrink-0 cursor-pointer rounded-2xl border border-white/15 px-3 text-xs! shadow-sm transition-[background-color,border-color,opacity] duration-150 hover:border-white/30 hover:bg-white/10 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current aria-pressed:border-current aria-pressed:bg-white/15 aria-pressed:underline aria-pressed:underline-offset-4 motion-reduce:transition-none";
   const splitPlans = useMemo(
     () =>
       splitFormation
@@ -464,31 +465,10 @@ export default function Canvas() {
     };
   }, [splitFormation?.id]);
 
-  // Active bridges keep the constellation aesthetic while gently reading as time.
+  // Keep route placement after leaving spotlight; spotlight only changes emphasis.
   useEffect(() => {
-    if (!activeBridge) {
-      setTimelineTargets(new Map());
-      return;
-    }
-    const ids = activeBridge.nodeIds;
-    const dated = ids
-      .map((id) => nodes[id])
-      .filter((node): node is NonNullable<typeof node> => Boolean(node?.decade));
-    const decades = dated.map((node) => node.decade as number);
-    const min = decades.length ? Math.min(...decades) : 0;
-    const max = decades.length ? Math.max(...decades) : 0;
-    const range = Math.max(max - min, 10);
-    const targets = new Map<number, number>();
-    ids.forEach((id, index) => {
-      const decade = nodes[id]?.decade;
-      const x =
-        decade === null || decade === undefined
-          ? (index / Math.max(ids.length - 1, 1) - 0.5) * 660
-          : ((decade - min) / range - 0.5) * 660;
-      targets.set(id, x);
-    });
-    setTimelineTargets(targets);
-  }, [activeBridge, nodes]);
+    setBridgeLayouts(Object.values(bridges));
+  }, [bridges, nodes, sizeScale]);
 
   // --- simulation tick → DOM ---------------------------------------------
   useEffect(() => {
@@ -645,7 +625,7 @@ export default function Canvas() {
       </svg>
       {(lineageRoles.root || lineageRoles.branch || lineageRoles.bridge) && (
         <aside
-          className="edge-legend glass pointer-events-auto!"
+          className="edge-legend pointer-events-auto! top-4! bottom-auto! left-32! right-4 z-60! gap-2! overflow-x-auto rounded-none! p-0! sm:right-auto"
           aria-label="Highlight artists by connection type"
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => event.stopPropagation()}
@@ -654,7 +634,7 @@ export default function Canvas() {
           {lineageRoles.root && (
             <button
               type="button"
-              className={`edge-legend-item is-root ${legendButtonClass} ${highlightedRole && highlightedRole !== "root" ? "opacity-50" : "opacity-100"}`}
+              className={`edge-legend-item is-root ${legendButtonClass} ${highlightedRole && highlightedRole !== "root" ? "opacity-75" : "opacity-100"}`}
               aria-pressed={highlightedRole === "root"}
               title={highlightedRole === "root" ? "Clear highlight" : "Highlight roots"}
               onClick={() => setLegendRole(highlightedRole === "root" ? null : "root")}
@@ -669,7 +649,7 @@ export default function Canvas() {
           {lineageRoles.branch && (
             <button
               type="button"
-              className={`edge-legend-item is-branch ${legendButtonClass} ${highlightedRole && highlightedRole !== "branch" ? "opacity-50" : "opacity-100"}`}
+              className={`edge-legend-item is-branch ${legendButtonClass} ${highlightedRole && highlightedRole !== "branch" ? "opacity-75" : "opacity-100"}`}
               aria-pressed={highlightedRole === "branch"}
               title={highlightedRole === "branch" ? "Clear highlight" : "Highlight branches"}
               onClick={() => setLegendRole(highlightedRole === "branch" ? null : "branch")}
@@ -684,7 +664,7 @@ export default function Canvas() {
           {lineageRoles.bridge && (
             <button
               type="button"
-              className={`edge-legend-item is-bridge ${legendButtonClass} ${highlightedRole && highlightedRole !== "bridge" ? "opacity-50" : "opacity-100"}`}
+              className={`edge-legend-item is-bridge ${legendButtonClass} ${highlightedRole && highlightedRole !== "bridge" ? "opacity-75" : "opacity-100"}`}
               aria-pressed={highlightedRole === "bridge"}
               title={highlightedRole === "bridge" ? "Clear highlight" : "Highlight bridges"}
               onClick={() => setLegendRole(highlightedRole === "bridge" ? null : "bridge")}

@@ -109,6 +109,8 @@ export async function expand(nodeId: number, direction: Direction): Promise<void
           .map((entry) => entry.picture),
       ]);
     }
+    // A cleared canvas must not be repopulated by an earlier expansion.
+    if (!useGraph.getState().nodes[nodeId]) return;
     useGraph.getState().applyLineage(nodeId, result);
     if (childIds.length) {
       ui.beginSplitFormation(nodeId, direction, childIds);

@@ -16,12 +16,13 @@ vi.mock("@/lib/canvas-controller", () => ({
 }));
 
 beforeEach(() => {
+  vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
   useUi.setState(useUi.getInitialState());
   useGraph.getState().reset();
   useGraph.getState().addSeed({ id: 1, name: "Test artist", picture: "photo", pictureBig: "photo", accent: "#aaa" });
   useHistory.getState().clear();
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 function spotlightBridge() {
   useUi.getState().resumeExploration();
@@ -101,13 +102,32 @@ it("opening a playlist closes Search, and opening Search closes the playlist", (
 });
 
 it("selection mode stays visible, creates a scoped playlist, and has a Done exit", () => {
+  useUi.getState().setCanvasTool("select");
   render(<ZoomBar />);
-  fireEvent.click(screen.getByRole("button", { name: /View options/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Select artists" }));
   expect(screen.getByRole("status").textContent).toContain("1 selected");
   fireEvent.click(screen.getByRole("button", { name: "Create playlist" }));
   expect(useUi.getState().playlistArtistIds).toEqual([1]);
   fireEvent.click(screen.getByRole("button", { name: "Done" }));
   expect(useUi.getState().canvasTool).toBe("pan");
   expect(screen.queryByRole("button", { name: "Done" })).toBeNull();
+});
+
+
+it("clears artists, bridges, selection, and transient canvas state from More options", () => {
+  spotlightBridge();
+  useUi.getState().setCanvasTool("select");
+  useUi.getState().startConnecting(1);
+  render(<ZoomBar />);
+  const trigger = screen.getByRole("button", { name: "More options" });
+  fireEvent.click(trigger);
+  expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  expect(screen.queryByRole("button", { name: "Select artists" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Clear canvas" }));
+  expect(useGraph.getState().order).toEqual([]);
+  expect(useGraph.getState().edges).toEqual([]);
+  expect(useGraph.getState().bridges).toEqual({});
+  expect(useGraph.getState().selectedIds).toEqual([]);
+  expect(useUi.getState().connectingFrom).toBeNull();
+  expect(useUi.getState().canvasTool).toBe("pan");
+  expect(screen.queryByRole("group", { name: "More options" })).toBeNull();
 });
