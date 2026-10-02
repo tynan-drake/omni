@@ -38,7 +38,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${brunoAce.variable}`}
     >
-      <body>
+      <body className="[&_.glass]:border-0! [&_.glass]:border-none!">
         {children}
         <Retune />
       </body>

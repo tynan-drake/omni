@@ -102,7 +102,7 @@ export default function Canvas() {
   };
   const highlightedRole = legendRole && lineageRoles[legendRole] ? legendRole : null;
   const highlightedIds = highlightedRole ? legendMembers[highlightedRole] : null;
-  const legendButtonClass = "bg-(--surface) backdrop-blur-lg pointer-events-auto min-h-11 shrink-0 cursor-pointer rounded-2xl border border-white/15 px-3 text-xs! shadow-sm transition-[background-color,border-color,opacity] duration-150 hover:border-white/30 hover:bg-white/10 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current aria-pressed:border-current aria-pressed:bg-white/15 aria-pressed:underline aria-pressed:underline-offset-4 motion-reduce:transition-none";
+  const legendButtonClass = "bg-(--surface) backdrop-blur-lg pointer-events-auto min-h-11 shrink-0 cursor-pointer rounded-2xl border-0 border-none px-3 text-xs! shadow-sm transition-[background-color,opacity] duration-150 hover:bg-white/10 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current aria-pressed:bg-white/15 aria-pressed:underline aria-pressed:underline-offset-4 motion-reduce:transition-none";
   const splitPlans = useMemo(
     () =>
       splitFormation

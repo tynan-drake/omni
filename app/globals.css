@@ -2687,7 +2687,7 @@ button.bridge-row {
 .search-source-links { display: flex; flex-wrap: wrap; gap: 8px 12px; padding: 10px; border-top: 1px solid #ffffff12; }
 .search-source-links a { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; color: var(--ink-dim); }
 .search-source-links a:focus-visible { outline: 2px solid var(--color-neutral-300); outline-offset: 3px; }
-.search-result.is-spotify .search-portrait, .search-result.is-spotify .search-portrait img { border-radius: 4px; }
+.search-result.is-spotify .search-portrait, .search-result.is-spotify .search-portrait img { border-radius: 50%; }
 .search-result.is-spotify .search-portrait img { object-fit: contain; }
 
 /* Stack supporting controls when the dock and player can no longer fit side by side. */

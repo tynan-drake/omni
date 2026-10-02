@@ -42,7 +42,7 @@ export default function Sidebar() {
         <span className="home-wordmark" aria-hidden="true">O</span> Home
       </button>
 
-      <button type="button" className={`exploration-playlist right-18! dock-action glass ${playlistOpen ? "is-active" : ""}`}
+      <button type="button" className={`exploration-playlist right-18! dock-action glass bg-(--surface)! hover:bg-white/10! aria-expanded:bg-white/10! ${playlistOpen ? "is-active" : ""}`}
         aria-expanded={playlistOpen} aria-controls={playlistOpen ? "playlist-builder" : undefined}
         title="Create playlist (P)" onClick={() => useUi.getState().setPlaylistOpen(!playlistOpen)}>
         <PlaylistIcon size={18} /> Create playlist

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { DialRoot, useDialKit, type DialConfig, type ResolvedValues } from "dialkit";
+import { useDialKit, type DialConfig, type ResolvedValues } from "dialkit";
 import "dialkit/styles.css";
 import { canvas } from "@/lib/canvas-controller";
 import { scatter, setLabelLayout, setPhysics } from "@/lib/simulation";
@@ -20,7 +20,7 @@ import { useOrbDials } from "@/store/orb-dials";
  *       they have to reach React (orb geometry, Motion springs).
  *
  * Values persist to localStorage, so a setup you like survives a reload.
- * DialRoot hides itself in production builds.
+ * The controls stay hidden while persisted tuning continues to apply.
  * ───────────────────────────────────────────────────────────────────────── */
 
 const CONFIG = {
@@ -353,5 +353,5 @@ export default function OrbDials() {
     }
   }, [params]);
 
-  return <DialRoot position="top-right" />;
+  return null;
 }
