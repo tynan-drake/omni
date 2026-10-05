@@ -16,6 +16,7 @@ export default function BridgeSignals() {
   const bridges = useGraph(s => s.bridges);
   const nodes = useGraph(s => s.nodes);
   const filter = useUi(s => s.filter);
+  const discoveryOpen = useUi(s => s.discoveryOpen);
   const paths = Object.values(bridges).flatMap(bridge => bridge.paths.map(path => ({
     key: `${bridge.id}:${path.id}`,
     // Route order describes traversal, even when an influence edge points back.
@@ -24,6 +25,7 @@ export default function BridgeSignals() {
   const elements = useRef(new Map<string, SVGGElement>());
 
   useLayoutEffect(() => {
+    if (discoveryOpen) return;
     const update = (positions: ReturnType<typeof getPositions>) => {
       for (const bridge of Object.values(bridges)) for (const path of bridge.paths) {
         const el = elements.current.get(`${bridge.id}:${path.id}`);
@@ -31,7 +33,7 @@ export default function BridgeSignals() {
         const ids = path.nodeIds[0] === bridge.endpointIds[0] ? path.nodeIds : [...path.nodeIds].reverse();
         const points = ids.map(id => positions.get(id));
         const ready = points.length > 1 && points.every(Boolean);
-        el.style.visibility = ready ? "visible" : "hidden";
+        el.style.visibility = ready ? "inherit" : "hidden";
         if (ready) for (const line of el.querySelectorAll("polyline")) {
           line.setAttribute("points", points.map(p => `${p!.x},${p!.y}`).join(" "));
         }
@@ -39,7 +41,9 @@ export default function BridgeSignals() {
     };
     update(getPositions());
     return onSimTick(update);
-  }, [bridges]);
+  }, [bridges, discoveryOpen]);
+
+  if (discoveryOpen) return null;
 
   return <g className="bridge-signals" aria-hidden="true">
     {paths.map(path => {

@@ -3,11 +3,12 @@ import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import BridgeSignals from "../components/BridgeSignals";
 import { useGraph } from "../store/graph";
+import { useUi } from "../store/ui";
 import type { ArtistBridge } from "../lib/types";
 
 const sim = vi.hoisted(() => ({ positions: new Map([[1, { x: 0, y: 0 }], [2, { x: 100, y: 100 }], [3, { x: 200, y: 0 }]]), tick: () => {} }));
 vi.mock("@/lib/simulation", () => ({ getPositions: () => sim.positions, onSimTick: (cb: (p: typeof sim.positions) => void) => { sim.tick = () => cb(sim.positions); return () => {}; } }));
-beforeEach(() => { sim.positions.clear(); sim.positions.set(1, { x: 0, y: 0 }); sim.positions.set(2, { x: 100, y: 100 }); sim.positions.set(3, { x: 200, y: 0 }); });
+beforeEach(() => { useUi.setState(useUi.getInitialState()); sim.positions.clear(); sim.positions.set(1, { x: 0, y: 0 }); sim.positions.set(2, { x: 100, y: 100 }); sim.positions.set(3, { x: 200, y: 0 }); });
 afterEach(cleanup);
 const bridge = { id: "bridge", endpointIds: [1, 3], paths: [{ id: "path", shape: "shared-root", nodeIds: [1, 2, 3], edgeIds: ["backward", "forward"] }] } as ArtistBridge;
 
@@ -29,4 +30,18 @@ it("orients reversed paths from the source and hides incomplete routes", () => {
   sim.positions.delete(2);
   act(() => sim.tick());
   expect((container.querySelector(".bridge-signal") as SVGElement).style.visibility).toBe("hidden");
+});
+
+it("removes bridge pulses on Home and restores them at current positions on resume", () => {
+  useGraph.setState({ bridges: { bridge }, activeBridgeId: "bridge" });
+  const { container } = render(<svg><BridgeSignals /></svg>);
+  expect((container.querySelector(".bridge-signal") as SVGElement).style.visibility).toBe("inherit");
+  act(() => useUi.getState().showDiscovery());
+  expect(container.querySelector(".bridge-signals")).toBeNull();
+  sim.positions.set(2, { x: 130, y: 90 });
+  act(() => sim.tick());
+  expect(container.querySelector("polyline")).toBeNull();
+  expect(useGraph.getState().bridges.bridge).toBe(bridge);
+  act(() => useUi.getState().resumeExploration());
+  expect(container.querySelector("polyline")!.getAttribute("points")).toBe("0,0 130,90 200,0");
 });
