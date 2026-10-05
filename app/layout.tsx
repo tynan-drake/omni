@@ -23,7 +23,7 @@ const brunoAce = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Omni — trace the lineage of sound",
+  title: "Omni",
   description:
     "Search any music artist and travel backward to their roots or forward to the artists they shaped, on a living canvas of influence.",
 };
